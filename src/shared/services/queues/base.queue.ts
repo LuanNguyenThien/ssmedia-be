@@ -1,5 +1,4 @@
-import IORedis from 'ioredis';
-import Queue, { Job, QueueOptions } from 'bull';
+import Queue, { Job } from 'bull';
 import Logger from 'bunyan';
 import { ExpressAdapter, createBullBoard, BullAdapter } from '@bull-board/express';
 import { config } from '@root/config';

@@ -152,7 +152,7 @@ export class UserCache extends BaseCache {
         await this.client.connect();
       }
       const replies: IUserDocument[] = [];
-      const followers: string[] = await this.client.LRANGE(`followers:${userId}`, 0, -1);
+      const followers: string[] = await this.client.LRANGE(`following:${userId}`, 0, -1);
       const users: string[] = await this.client.ZRANGE('user', 0, -1);
       const randomUsers: string[] = Helpers.shuffle(users).slice(0, 10);
       for (const key of randomUsers) {
