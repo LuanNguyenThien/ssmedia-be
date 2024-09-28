@@ -1,4 +1,4 @@
-import Queue, { Job } from 'bull';
+import Queue, { Job, QueueOptions } from 'bull';
 import Logger from 'bunyan';
 import { ExpressAdapter, createBullBoard, BullAdapter } from '@bull-board/express';
 import { config } from '@root/config';
@@ -35,13 +35,13 @@ export abstract class BaseQueue {
   log: Logger;
 
   constructor(queueName: string) {
-    // this.queue = new Queue(queueName, {
-    //   redis: {
-    //     client: redisService.getClient(),
-    //   }
-    // } as QueueOptions);
+    this.queue = new Queue(queueName, {
+      redis: {
+        client: redisService.getClient(),
+      }
+    } as QueueOptions);
 
-    this.queue = new Queue(queueName, `${config.REDIS_HOST}`);
+    // this.queue = new Queue(queueName, `${config.REDIS_HOST}`);
     bullAdapters.push(new BullAdapter(this.queue));
     bullAdapters = [...new Set(bullAdapters)];
     serverAdapter = new ExpressAdapter();

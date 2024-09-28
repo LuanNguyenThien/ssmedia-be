@@ -10,6 +10,7 @@ export abstract class BaseCache {
   log: Logger;
 
   constructor(cacheName: string) {
+    console.log(cacheName);
     this.client = createClient({ url: config.REDIS_HOST });
     // redisService.connect();
     // this.client = redisService.getClient();

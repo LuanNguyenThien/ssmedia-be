@@ -15,9 +15,11 @@ export class MessageCache extends BaseCache {
   }
 
   public async addChatListToCache(senderId: string, receiverId: string, conversationId: string): Promise<void> {
+    let clientConnected:boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       const userChatList = await this.client.LRANGE(`chatList:${senderId}`, 0, -1);
       if (userChatList.length === 0) {
@@ -31,25 +33,37 @@ export class MessageCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
   public async addChatMessageToCache(conversationId: string, value: IMessageData): Promise<void> {
+    let clientConnected:boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       await this.client.RPUSH(`messages:${conversationId}`, JSON.stringify(value));
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
   public async addChatUsersToCache(value: IChatUsers): Promise<IChatUsers[]> {
+    let clientConnected:boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       const users: IChatUsers[] = await this.getChatUsersList();
       const usersIndex: number = findIndex(users, (listItem: IChatUsers) => JSON.stringify(listItem) === JSON.stringify(value));
@@ -64,13 +78,19 @@ export class MessageCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
   public async removeChatUsersFromCache(value: IChatUsers): Promise<IChatUsers[]> {
+    let clientConnected:boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       const users: IChatUsers[] = await this.getChatUsersList();
       const usersIndex: number = findIndex(users, (listItem: IChatUsers) => JSON.stringify(listItem) === JSON.stringify(value));
@@ -85,13 +105,19 @@ export class MessageCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
   public async getUserConversationList(key: string): Promise<IMessageData[]> {
+    let clientConnected:boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       const userChatList: string[] = await this.client.LRANGE(`chatList:${key}`, 0, -1);
       const conversationChatList: IMessageData[] = [];
@@ -104,13 +130,19 @@ export class MessageCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
   public async getChatMessagesFromCache(senderId: string, receiverId: string): Promise<IMessageData[]> {
+    let clientConnected:boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       const userChatList: string[] = await this.client.LRANGE(`chatList:${senderId}`, 0, -1);
       const receiver: string = find(userChatList, (listItem: string) => listItem.includes(receiverId)) as string;
@@ -129,13 +161,19 @@ export class MessageCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
   public async markMessageAsDeleted(senderId: string, receiverId: string, messageId: string, type: string): Promise<IMessageData> {
+    let clientConnected: boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       const { index, message, receiver } = await this.getMessage(senderId, receiverId, messageId);
       const chatItem = Helpers.parseJson(message) as IMessageData;
@@ -152,13 +190,19 @@ export class MessageCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
   public async updateChatMessages(senderId: string, receiverId: string): Promise<IMessageData> {
+    let clientConnected: boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       const userChatList: string[] = await this.client.LRANGE(`chatList:${senderId}`, 0, -1);
       const receiver: string = find(userChatList, (listItem: string) => listItem.includes(receiverId)) as string;
@@ -176,6 +220,10 @@ export class MessageCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
@@ -186,9 +234,11 @@ export class MessageCache extends BaseCache {
     senderName: string,
     type: 'add' | 'remove'
   ): Promise<IMessageData> {
+    let clientConnected: boolean = false;
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
+        clientConnected = true;
       }
       const messages: string[] = await this.client.LRANGE(`messages:${conversationId}`, 0, -1);
       const messageIndex: number = findIndex(messages, (listItem: string) => listItem.includes(messageId));
@@ -210,18 +260,39 @@ export class MessageCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    } finally {
+      if (clientConnected) {
+        await this.client.disconnect();
+      }
     }
   }
 
   private async getChatUsersList(): Promise<IChatUsers[]> {
-    const chatUsersList: IChatUsers[] = [];
-    const chatUsers = await this.client.LRANGE('chatUsers', 0, -1);
-    for (const item of chatUsers) {
-      const chatUser: IChatUsers = Helpers.parseJson(item) as IChatUsers;
-      chatUsersList.push(chatUser);
+      const chatUsersList: IChatUsers[] = [];
+      let clientConnected = false;
+  
+      try {
+        // Kiểm tra kết nối của client
+        if (!this.client.isOpen) {
+          await this.client.connect();
+          clientConnected = true;
+        }
+  
+        const chatUsers = await this.client.LRANGE('chatUsers', 0, -1);
+        for (const item of chatUsers) {
+          const chatUser: IChatUsers = Helpers.parseJson(item) as IChatUsers;
+          chatUsersList.push(chatUser);
+        }
+      } catch (error) {
+        console.error('Error fetching chat users list:', error);
+      } finally {
+        // Đóng kết nối nếu nó được mở trong hàm này
+        if (clientConnected) {
+          await this.client.disconnect();
+        }
+      }
+      return chatUsersList;
     }
-    return chatUsersList;
-  }
 
   private async getMessage(senderId: string, receiverId: string, messageId: string): Promise<IGetMessageFromCache> {
     const userChatList: string[] = await this.client.LRANGE(`chatList:${senderId}`, 0, -1);
