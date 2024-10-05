@@ -10,10 +10,12 @@ import { NotificationModel } from '@notification/models/notification.schema';
 import { socketIONotificationObject } from '@socket/notification';
 import { notificationTemplate } from '@service/emails/templates/notifications/notification-template';
 import { emailQueue } from '@service/queues/email.queue';
-import { UserCache } from '@service/redis/user.cache';
+// import { UserCache } from '@service/redis/user.cache';
+import { cache } from '@service/redis/cache';
 import { map } from 'lodash';
 
-const userCache: UserCache = new UserCache();
+// const userCache: UserCache = new UserCache();
+const userCache = cache.userCache;
 
 class FollowerService {
   public async addFollowerToDB(userId: string, followeeId: string, username: string, followerDocumentId: ObjectId): Promise<void> {

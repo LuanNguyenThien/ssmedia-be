@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
 import mongoose from 'mongoose';
-import { MessageCache } from '@service/redis/message.cache';
+// import { MessageCache } from '@service/redis/message.cache';
 import { chatService } from '@service/db/chat.service';
 import { IMessageData } from '@chat/interfaces/chat.interface';
+import { cache } from '@service/redis/cache';
 
-const messageCache: MessageCache = new MessageCache();
+// const messageCache: MessageCache = new MessageCache();
+const messageCache = cache.messageCache;
 
 export class Get {
   public async conversationList(req: Request, res: Response): Promise<void> {

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
-import { UserCache } from '@service/redis/user.cache';
+// import { UserCache } from '@service/redis/user.cache';
 import { IUserDocument } from '@user/interfaces/user.interface';
 import { joiValidation } from '@global/decorators/joi-validation.decorators';
 import { addChatSchema } from '@chat/schemes/chat';
@@ -14,11 +14,14 @@ import { socketIOChatObject } from '@socket/chat';
 import { INotificationTemplate } from '@notification/interfaces/notification.interface';
 import { notificationTemplate } from '@service/emails/templates/notifications/notification-template';
 import { emailQueue } from '@service/queues/email.queue';
-import { MessageCache } from '@service/redis/message.cache';
+// import { MessageCache } from '@service/redis/message.cache';
+import { cache } from '@service/redis/cache';
 import { chatQueue } from '@service/queues/chat.queue';
 
-const userCache: UserCache = new UserCache();
-const messageCache: MessageCache = new MessageCache();
+// const messageCache: MessageCache = new MessageCache();
+// const userCache: UserCache = new UserCache();
+const userCache = cache.userCache;
+const messageCache = cache.messageCache;
 
 export class Add {
   @joiValidation(addChatSchema)

@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
 import { FollowerCache } from '@service/redis/follower.cache';
-import { PostCache } from '@service/redis/post.cache';
-import { UserCache } from '@service/redis/user.cache';
+// import { PostCache } from '@service/redis/post.cache';
+// import { UserCache } from '@service/redis/user.cache';
 import { IAllUsers, IUserDocument } from '@user/interfaces/user.interface';
 import { userService } from '@service/db/user.service';
 import { IFollowerData } from '@follower/interfaces/follower.interface';
@@ -11,6 +11,7 @@ import mongoose from 'mongoose';
 import { Helpers } from '@global/helpers/helpers';
 import { IPostDocument } from '@post/interfaces/post.interface';
 import { postService } from '@service/db/post.service';
+import { cache } from '@service/redis/cache';
 
 const PAGE_SIZE = 12;
 
@@ -21,9 +22,12 @@ interface IUserAll {
   userId: string;
 }
 
-const postCache: PostCache = new PostCache();
-const userCache: UserCache = new UserCache();
-const followerCache: FollowerCache = new FollowerCache();
+// const postCache: PostCache = new PostCache();
+// const userCache: UserCache = new UserCache();
+// const followerCache: FollowerCache = new FollowerCache();
+const userCache = cache.userCache;
+const postCache = cache.postCache;
+const followerCache = cache.followerCache;
 
 export class Get {
   public async all(req: Request, res: Response): Promise<void> {

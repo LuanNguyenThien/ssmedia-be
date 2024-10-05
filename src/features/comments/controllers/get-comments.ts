@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
 import { ICommentDocument, ICommentNameList } from '@comment/interfaces/comment.interface';
-import { CommentCache } from '@service/redis/comment.cache';
+// import { CommentCache } from '@service/redis/comment.cache';
 import { commentService } from '@service/db/comment.service';
 import mongoose from 'mongoose';
+import { cache } from '@service/redis/cache';
 
-const commentCache: CommentCache = new CommentCache();
+// const commentCache: CommentCache = new CommentCache();
+const commentCache = cache.commentCache;
 
 export class Get {
   public async comments(req: Request, res: Response): Promise<void> {

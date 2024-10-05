@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
-import { FollowerCache } from '@service/redis/follower.cache';
+// import { FollowerCache } from '@service/redis/follower.cache';
 import { blockedUserQueue } from '@service/queues/blocked.queue';
+import { cache } from '@service/redis/cache';
 
-const followerCache: FollowerCache = new FollowerCache();
+// const followerCache: FollowerCache = new FollowerCache();
+const followerCache = cache.followerCache;
 
 export class AddUser {
   public async block(req: Request, res: Response): Promise<void> {

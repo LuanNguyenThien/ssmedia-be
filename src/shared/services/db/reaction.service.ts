@@ -3,7 +3,7 @@ import { IPostDocument } from '@post/interfaces/post.interface';
 import { PostModel } from '@post/models/post.schema';
 import { IQueryReaction, IReactionDocument, IReactionJob } from '@reaction/interfaces/reaction.interface';
 import { ReactionModel } from '@reaction/models/reaction.schema';
-import { UserCache } from '@service/redis/user.cache';
+// import { UserCache } from '@service/redis/user.cache';
 import { IUserDocument } from '@user/interfaces/user.interface';
 import { omit } from 'lodash';
 import mongoose from 'mongoose';
@@ -12,8 +12,10 @@ import { NotificationModel } from '@notification/models/notification.schema';
 import { socketIONotificationObject } from '@socket/notification';
 import { notificationTemplate } from '@service/emails/templates/notifications/notification-template';
 import { emailQueue } from '@service/queues/email.queue';
+import { cache } from '@service/redis/cache';
 
-const userCache: UserCache = new UserCache();
+// const userCache: UserCache = new UserCache();
+const userCache = cache.userCache;
 
 class ReactionService {
   public async addReactionDataToDB(reactionData: IReactionJob): Promise<void> {

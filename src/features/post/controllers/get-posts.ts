@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
 import { IPostDocument } from '@post/interfaces/post.interface';
-import { PostCache } from '@service/redis/post.cache';
+// import { PostCache } from '@service/redis/post.cache';
 import { postService } from '@service/db/post.service';
+import { cache } from '@service/redis/cache';
 
-const postCache: PostCache = new PostCache();
+// const postCache: PostCache = new PostCache();
+const postCache = cache.postCache;
 const PAGE_SIZE = 10;
 
 export class Get {

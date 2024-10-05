@@ -3,15 +3,17 @@ import { CommentsModel } from '@comment/models/comment.schema';
 import { IPostDocument } from '@post/interfaces/post.interface';
 import { PostModel } from '@post/models/post.schema';
 import mongoose, { Query } from 'mongoose';
-import { UserCache } from '@service/redis/user.cache';
+// import { UserCache } from '@service/redis/user.cache';
 import { IUserDocument } from '@user/interfaces/user.interface';
 import { NotificationModel } from '@notification/models/notification.schema';
 import { INotificationDocument, INotificationTemplate } from '@notification/interfaces/notification.interface';
 import { socketIONotificationObject } from '@socket/notification';
 import { notificationTemplate } from '@service/emails/templates/notifications/notification-template';
 import { emailQueue } from '@service/queues/email.queue';
+import { cache } from '@service/redis/cache';
 
-const userCache: UserCache = new UserCache();
+// const userCache: UserCache = new UserCache();
+const userCache = cache.userCache;
 
 class CommentService {
   public async addCommentToDB(commentData: ICommentJob): Promise<void> {

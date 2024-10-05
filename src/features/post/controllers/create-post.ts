@@ -4,15 +4,17 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import HTTP_STATUS from 'http-status-codes';
 import { IPostDocument } from '@post/interfaces/post.interface';
-import { PostCache } from '@service/redis/post.cache';
+// import { PostCache } from '@service/redis/post.cache';
 import { socketIOPostObject } from '@socket/post';
 import { postQueue } from '@service/queues/post.queue';
 import { UploadApiResponse } from 'cloudinary';
 import { uploads, videoUpload } from '@global/helpers/cloudinary-upload';
 import { BadRequestError } from '@global/helpers/error-handler';
 import { imageQueue } from '@service/queues/image.queue';
+import { cache } from '@service/redis/cache';
 
-const postCache: PostCache = new PostCache();
+// const postCache: PostCache = new PostCache();
+const postCache = cache.postCache;
 
 export class Create {
   @joiValidation(postSchema)
