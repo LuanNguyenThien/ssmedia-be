@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
-import { UserCache } from '@service/redis/user.cache';
+// import { UserCache } from '@service/redis/user.cache';
 import { userQueue } from '@service/queues/user.queue';
 import { joiValidation } from '@global/decorators/joi-validation.decorators';
 import { notificationSettingsSchema } from '@user/schemes/info';
+import { cache } from '@service/redis/cache';
 
-const userCache: UserCache = new UserCache();
+// const userCache: UserCache = new UserCache();
+const userCache = cache.userCache;
 
 export class UpdateSettings {
   @joiValidation(notificationSettingsSchema)

@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
 import { IReactionDocument } from '@reaction/interfaces/reaction.interface';
-import { ReactionCache } from '@service/redis/reaction.cache';
+// import { ReactionCache } from '@service/redis/reaction.cache';
 import { reactionService } from '@service/db/reaction.service';
 import mongoose from 'mongoose';
+import { cache } from '@service/redis/cache';
 
-const reactionCache: ReactionCache = new ReactionCache();
+// const reactionCache: ReactionCache = new ReactionCache();
+const reactionCache = cache.reactionCache;
 
 export class Get {
   public async reactions(req: Request, res: Response): Promise<void> {

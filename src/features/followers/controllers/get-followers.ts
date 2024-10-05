@@ -2,11 +2,13 @@ import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import HTTP_STATUS from 'http-status-codes';
 import mongoose from 'mongoose';
-import { FollowerCache } from '@service/redis/follower.cache';
+// import { FollowerCache } from '@service/redis/follower.cache';
 import { IFollowerData } from '@follower/interfaces/follower.interface';
 import { followerService } from '@service/db/follower.service';
+import { cache } from '@service/redis/cache';
 
-const followerCache: FollowerCache = new FollowerCache();
+// const followerCache: FollowerCache = new FollowerCache();
+const followerCache = cache.followerCache;
 
 export class Get {
   public async userFollowing(req: Request, res: Response): Promise<void> {
