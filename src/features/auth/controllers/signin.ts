@@ -16,12 +16,12 @@ export class SignIn {
     const { username, password } = req.body;
     const existingUser: IAuthDocument = await authService.getAuthUserByUsername(username);
     if (!existingUser) {
-      throw new BadRequestError('Invalid credentials');
+      throw new BadRequestError('Tài khoản không tồn tại');
     }
 
     const passwordsMatch: boolean = await existingUser.comparePassword(password);
     if (!passwordsMatch) {
-      throw new BadRequestError('Invalid credentials');
+      throw new BadRequestError('Mật khẩu không chính xác');
     }
     const user: IUserDocument = await userService.getUserByAuthId(`${existingUser._id}`);
     const userJwt: string = JWT.sign(

@@ -8,6 +8,7 @@ export interface ICommentDocument extends Document {
   postId: string;
   profilePicture: string;
   comment: string;
+  selectedImage: string;
   createdAt?: Date;
   userTo?: string | ObjectId;
 }

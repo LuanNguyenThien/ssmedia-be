@@ -14,7 +14,7 @@ const commentCache = cache.commentCache;
 export class Add {
   @joiValidation(addCommentSchema)
   public async comment(req: Request, res: Response): Promise<void> {
-    const { userTo, postId, profilePicture, comment } = req.body;
+    const { userTo, postId, profilePicture, comment, selectedImage } = req.body;
     const commentObjectId: ObjectId = new ObjectId();
     const commentData: ICommentDocument = {
       _id: commentObjectId,
@@ -23,6 +23,7 @@ export class Add {
       avatarColor: `${req.currentUser?.avatarColor}`,
       profilePicture,
       comment,
+      selectedImage,
       createdAt: new Date()
     } as ICommentDocument;
     await commentCache.savePostCommentToCache(postId, JSON.stringify(commentData));
