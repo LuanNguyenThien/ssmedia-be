@@ -44,7 +44,7 @@ export class Add {
     const sender: IUserDocument = (await userCache.getUserFromCache(`${req.currentUser!.userId}`)) as IUserDocument;
 
     if (selectedImage.length) {
-      const result: UploadApiResponse = (await uploads(req.body.selectedImage, req.currentUser!.userId, true, true)) as UploadApiResponse;
+      const result: UploadApiResponse = (await uploads(req.body.selectedImage)) as UploadApiResponse;
       if (!result?.public_id) {
         throw new BadRequestError(result.message);
       }

@@ -7,6 +7,9 @@ import { ICommentDocument, ICommentJob } from '@comment/interfaces/comment.inter
 // import { CommentCache } from '@service/redis/comment.cache';
 import { commentQueue } from '@service/queues/comment.queue';
 import { cache } from '@service/redis/cache';
+import { UploadApiResponse } from 'cloudinary';
+import { uploads } from '@global/helpers/cloudinary-upload';
+import { BadRequestError } from '@global/helpers/error-handler';
 
 // const commentCache: CommentCache = new CommentCache();
 const commentCache = cache.commentCache;
@@ -14,7 +17,15 @@ const commentCache = cache.commentCache;
 export class Add {
   @joiValidation(addCommentSchema)
   public async comment(req: Request, res: Response): Promise<void> {
-    const { userTo, postId, profilePicture, comment, selectedImage } = req.body;
+    const { userTo, postId, profilePicture, comment, selectedImage, parentId } = req.body;
+    let fileUrl= '';
+    if (selectedImage.length) {
+      const result: UploadApiResponse = (await uploads(req.body.selectedImage)) as UploadApiResponse;
+      if (!result?.public_id) {
+        throw new BadRequestError(result.message);
+      }
+      fileUrl = `https://res.cloudinary.com/di6ozapw8/image/upload/v${result.version}/${result.public_id}`;
+    }
     const commentObjectId: ObjectId = new ObjectId();
     const commentData: ICommentDocument = {
       _id: commentObjectId,
@@ -23,7 +34,8 @@ export class Add {
       avatarColor: `${req.currentUser?.avatarColor}`,
       profilePicture,
       comment,
-      selectedImage,
+      selectedImage: fileUrl,
+      parentId: parentId || null,
       createdAt: new Date()
     } as ICommentDocument;
     await commentCache.savePostCommentToCache(postId, JSON.stringify(commentData));

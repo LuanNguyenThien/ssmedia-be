@@ -16,6 +16,7 @@ const commentSchema: Schema = new Schema({
     angry: { type: Number, default: 0 }
   },
   selectedImage: { type: String, default: '' },
+  parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment', default: null },
   createdAt: { type: Date, default: Date.now() }
 });
 

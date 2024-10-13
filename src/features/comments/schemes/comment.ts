@@ -16,7 +16,8 @@ const addCommentSchema: ObjectSchema = Joi.object().keys({
   }),
   selectedImage: Joi.string().optional().allow(null, ''),
   profilePicture: Joi.string().optional().allow(null, ''),
-  commentsCount: Joi.number().optional().allow(null, '')
+  commentsCount: Joi.number().optional().allow(null, ''),
+  parentId: Joi.string().optional().allow(null, '')
 }).or('comment', 'selectedImage').messages({
   'object.missing': 'Either comment or selectedImage must be provided'
 });
