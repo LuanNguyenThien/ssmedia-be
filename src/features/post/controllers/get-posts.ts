@@ -10,6 +10,19 @@ const postCache = cache.postCache;
 const PAGE_SIZE = 10;
 
 export class Get {
+
+  public async postById(req: Request, res: Response): Promise<Response> {
+    const { postId } = req.params;
+    let post: IPostDocument | null = await postCache.getPostFromCache(postId);
+    if (!post) {
+      post = await postService.getPostById(postId);
+      if (!post) {
+        return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Post not found' });
+      }
+    }
+    return res.status(HTTP_STATUS.OK).json({ message: 'Post found', post });
+  }
+
   public async posts(req: Request, res: Response): Promise<void> {
     const { page } = req.params;
     const skip: number = (parseInt(page) - 1) * PAGE_SIZE;

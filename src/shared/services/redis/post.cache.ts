@@ -80,6 +80,30 @@ export class PostCache extends BaseCache {
     }
   }
 
+  public async getPostFromCache(postId: string): Promise<IPostDocument | null> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+
+      const postKey = `posts:${postId}`;
+      const post: IPostDocument = await this.client.HGETALL(postKey) as unknown as IPostDocument;
+
+      if (!post || Object.keys(post).length === 0) {
+        return null;
+      }
+
+      post.commentsCount = Helpers.parseJson(`${post.commentsCount}`) as number;
+      post.reactions = Helpers.parseJson(`${post.reactions}`) as IReactions;
+      post.createdAt = new Date(Helpers.parseJson(`${post.createdAt}`)) as Date;
+
+      return post;
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
   public async getPostsFromCache(key: string, start: number, end: number): Promise<IPostDocument[]> {
     try {
       if (!this.client.isOpen) {
