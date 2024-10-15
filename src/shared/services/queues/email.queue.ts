@@ -3,6 +3,7 @@ import { IEmailJob } from '@user/interfaces/user.interface';
 import { emailWorker } from '@worker/email.worker';
 
 class EmailQueue extends BaseQueue {
+  private static instance: EmailQueue;
   constructor() {
     super('emails');
     this.processJob('forgotPasswordEmail', 5, emailWorker.addNotificationEmail);
@@ -13,9 +14,16 @@ class EmailQueue extends BaseQueue {
     this.processJob('changePassword', 5, emailWorker.addNotificationEmail);
   }
 
+  public static getInstance(): EmailQueue {
+    if (!EmailQueue.instance) {
+      EmailQueue.instance = new EmailQueue();
+    }
+    return EmailQueue.instance;
+  }
+
   public addEmailJob(name: string, data: IEmailJob): void {
     this.addJob(name, data);
   }
 }
 
-export const emailQueue: EmailQueue = new EmailQueue();
+export const emailQueue: EmailQueue = EmailQueue.getInstance();

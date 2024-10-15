@@ -1,10 +1,12 @@
-import { createClient } from 'redis';
+import * as Redis from 'ioredis';
 import { config } from '@root/config';
 import Logger from 'bunyan';
 
 class RedisService {
   private static instance: RedisService;
-  private client: ReturnType<typeof createClient>;
+  private redisClient: Redis.Redis;
+  private subcriberClient: Redis.Redis;
+  private bclient: Redis.Redis;
   private log: Logger;
   private isConnected: boolean = false;
   private connectPromise: Promise<void> | null = null;
@@ -12,14 +14,25 @@ class RedisService {
   private constructor() {
     this.log = config.createLogger('redisService');
     console.log('Creating RedisService instance');
-    this.client = createClient({
-      url: config.REDIS_HOST,
-      legacyMode: true
+    const redisHost = config.REDIS_HOST || 'redis://localhost:6379';
+    this.redisClient = new Redis.default(redisHost);
+    this.subcriberClient = new Redis.default(redisHost, {
+      enableReadyCheck: false,
+      maxRetriesPerRequest: null,
     });
+    this.bclient = new Redis.default(redisHost, {
+      enableReadyCheck: false,
+      maxRetriesPerRequest: null,});
 
     // Thêm handler cho sự kiện error
-    this.client.on('error', (error) => {
+    this.redisClient.on('error', (error) => {
       this.log.error(`Redis error: ${error}`);
+    });
+    this.subcriberClient.on('error', (error) => {
+      this.log.error(`Redis subscriber error: ${error}`);
+    });
+    this.bclient.on('error', (error) => {
+      this.log.error(`Redis bclient error: ${error}`);
     });
   }
 
@@ -33,7 +46,7 @@ class RedisService {
   async connect(): Promise<void> {
     if (!this.isConnected) {
       if (!this.connectPromise) {
-        this.connectPromise = this.client.connect().then(() => {
+        this.connectPromise = this.redisClient.connect().then(() => {
           this.isConnected = true;
           this.log.info('Redis connected successfully');
         }).catch((error) => {
@@ -49,14 +62,22 @@ class RedisService {
 
   async disconnect(): Promise<void> {
     if (this.isConnected) {
-      await this.client.quit();
+      await this.redisClient.quit();
       this.isConnected = false;
       this.log.info('Redis disconnected successfully');
     }
   }
 
-  getClient(): ReturnType<typeof createClient> {
-    return this.client;
+  getredisClient(): Redis.Redis {
+    return this.redisClient;
+  }
+
+  getsubcriberClient(): Redis.Redis {
+    return this.subcriberClient;
+  }
+
+  getbclient(): Redis.Redis {
+    return this.bclient;
   }
 
   isClientConnected(): boolean {
