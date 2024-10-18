@@ -24,11 +24,13 @@ export interface IPostDocument extends Document {
 }
 
 export interface IGetPostsQuery {
-  _id?: ObjectId | string;
+  _id?: ObjectId | string | { $in: string[] };
   username?: string;
   imgId?: string;
   gifUrl?: string;
   videoId?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export interface ISavePostToCache {

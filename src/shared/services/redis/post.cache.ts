@@ -295,4 +295,51 @@ export class PostCache extends BaseCache {
       throw new ServerError('Server error. Try again.');
     }
   }
+
+  public async toggleFavoritePostInCache(userId: string, postId: string): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+
+      // Kiểm tra xem bài viết yêu thích đã tồn tại trong cache chưa
+      const isFavorite = await this.client.ZSCORE(`favPosts:${userId}`, postId);
+      if (isFavorite) {
+        // Nếu đã tồn tại, xóa bài viết yêu thích khỏi cache
+        await this.client.ZREM(`favPosts:${userId}`, postId);
+      } else {
+        // Nếu chưa tồn tại, thêm bài viết yêu thích vào cache
+        await this.client.ZADD(`favPosts:${userId}`, { score: Date.now(), value: postId });
+      }
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async getFavoritePostsFromCache(userId: string): Promise<IPostDocument[]> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+
+      const postIds: string[] = await this.client.ZRANGE(`favPosts:${userId}`, 0, -1);
+      const multi: ReturnType<typeof this.client.multi> = this.client.multi();
+      for (const postId of postIds) {
+        multi.HGETALL(`posts:${postId}`);
+      }
+      const replies: PostCacheMultiType = (await multi.exec()) as PostCacheMultiType;
+      const favoritePosts: IPostDocument[] = [];
+      for (const post of replies as IPostDocument[]) {
+        post.commentsCount = Helpers.parseJson(`${post.commentsCount}`) as number;
+        post.reactions = Helpers.parseJson(`${post.reactions}`) as IReactions;
+        post.createdAt = new Date(Helpers.parseJson(`${post.createdAt}`)) as Date;
+        favoritePosts.push(post);
+      }
+      return favoritePosts;
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
 }

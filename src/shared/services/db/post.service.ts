@@ -17,7 +17,7 @@ class PostService {
   }
 
   public async getPosts(query: IGetPostsQuery, skip = 0, limit = 0, sort: Record<string, 1 | -1>): Promise<IPostDocument[]> {
-    let postQuery = {};
+    let postQuery: any = {};
     if (query?.imgId && query?.gifUrl) {
       postQuery = { $or: [{ imgId: { $ne: '' } }, { gifUrl: { $ne: '' } }] };
     } else if (query?.videoId) {
@@ -25,6 +25,18 @@ class PostService {
     } else {
       postQuery = query;
     }
+
+    // Xử lý lọc theo ngày
+    if (query.startDate || query.endDate) {
+      postQuery.createdAt = {};
+      if (query.startDate) {
+        postQuery.createdAt.$gte = query.startDate;
+      }
+      if (query.endDate) {
+        postQuery.createdAt.$lte = query.endDate;
+      }
+    }
+
     const posts: IPostDocument[] = await PostModel.aggregate([{ $match: postQuery }, { $sort: sort }, { $skip: skip }, { $limit: limit }]);
     return posts;
   }
