@@ -1,4 +1,4 @@
-import Queue, { Job, QueueOptions } from 'bull';
+import Queue, { Job } from 'bull';
 import Logger from 'bunyan';
 import { ExpressAdapter, createBullBoard, BullAdapter } from '@bull-board/express';
 import { config } from '@root/config';
@@ -12,7 +12,9 @@ import { IBlockedUserJobData, IFollowerJobData } from '@follower/interfaces/foll
 import { INotificationJobData } from '@notification/interfaces/notification.interface';
 import { IFileImageJobData } from '@image/interfaces/image.interface';
 import { IChatJobData, IMessageData } from '@chat/interfaces/chat.interface';
-import { redisService } from '@service/redis/redis.service';
+// import { redisService } from '@service/redis/redis.service';
+// import RedisManager from '@service/redis/redis.service';
+// import { getRedisClient, releaseRedisClient } from '@service/redis/redis-pool';
 
 type IBaseJobData =
   | IAuthJob
@@ -31,9 +33,13 @@ type IBaseJobData =
 
 let bullAdapters: BullAdapter[] = [];
 export let serverAdapter: ExpressAdapter;
-const redisClient = redisService.getredisClient();
-const subcriberClient = redisService.getsubcriberClient();
-const bclient = redisService.getbclient();
+// const redisClient = redisService.getredisClient();
+// const subcriberClient = redisService.getsubcriberClient();
+// const bclient = redisService.getbclient();
+
+// const redisClient = redisPool.getClient();
+// const subscriberClient = redisPool.getClient();
+// const bclient = redisPool.getClient();
 
 export abstract class BaseQueue {
   queue: Queue.Queue;
@@ -126,44 +132,68 @@ export abstract class BaseQueue {
 
 
   constructor(queueName: string) {
-    // const redisClient = redisService.getClient();
-    // if (redisService.isClientConnected())
-    //   console.log('Redis client is not connected');
-    // if (queueName === "test" || queueName === "new test") {
-    //   if (redisClient.status === 'ready') {
-    //     console.log('Redis client is connected successfully');
-    //     this.queue = new Queue(queueName, {
-    //       // createClient: (type) => {
-    //       //   switch (type) {
-    //       //     case 'client':
-    //       //       return redisClient;
-    //       //     case 'subscriber':
-    //       //       return redisClient.duplicate();
-    //       //     case 'bclient':
-    //       //       return redisClient.duplicate();
-    //       //     default:
-    //       //       throw new Error(`Unexpected connection type: ${type}`);
-    //       //   }
-    //       // },
-    //       createClient: () => redisClient,
-    //     });
-    //   }
-    // }
-    this.queue = new Queue(queueName, {
-      createClient: (type) => {
-        switch (type) {
-          case 'client':
-            return redisClient;
-          case 'subscriber':
-            return subcriberClient;
-          case 'bclient':
-            return bclient;
-          default:
-            throw new Error(`Unexpected connection type: ${type}`);
-        }
-      },
-    });
-    // this.queue = new Queue(queueName, `${config.REDIS_HOST}`);
+    this.log = config.createLogger(`${queueName}Queue`);
+
+    // this.queue = new Queue(queueName, {
+    //   createClient: (type) => {
+    //     switch (type) {
+    //       case 'client':
+    //         return RedisManager.getClient();
+    //       case 'subscriber':
+    //         return RedisManager.getSubscriber();
+    //       case 'bclient':
+    //         return RedisManager.getBClient();
+    //       default:
+    //         throw new Error(`Unexpected client type: ${type}`);
+    //     }
+    //   },
+    // });
+
+    // this.queue = new Queue(queueName, {
+    //   createClient: (type) => {
+    //     switch (type) {
+    //       case 'client':
+    //         return redisClients.getClient();
+    //       case 'subscriber':
+    //         return redisClients.getSubscriber();
+    //       case 'bclient':
+    //         return redisClients.getBclient();
+    //       default:
+    //         throw new Error(`Unexpected connection type: ${type}`);
+    //     }
+    //   },
+    // });
+
+
+    // this.queue = new Queue(queueName, {
+    //   createClient: async (type: string) => {
+    //     const client = await getRedisClient(); // Lấy client từ pool
+    //     if (type === 'client' || type === 'subscriber' || type === 'bclient') {
+    //       return client;
+    //     } else {
+    //       throw new Error(`Unexpected client type: ${type}`);
+    //     }
+    //   },
+    // });
+
+
+    // this.queue = new Queue(queueName, {
+    //   createClient: (type) => {
+    //     switch (type) {
+    //       case 'client':
+    //         return redisClient;
+    //       case 'subscriber':
+    //         return subcriberClient;
+    //       case 'bclient':
+    //         return bclient;
+    //       default:
+    //         throw new Error(`Unexpected connection type: ${type}`);
+    //     }
+    //   },
+    // });
+
+
+    this.queue = new Queue(queueName, `${config.REDIS_HOST_Queue}`);
     // if (!redisClient.isOpen) {
     //   console.error('Redis client is not connected');
     //   throw new Error('Redis client is not connected');
@@ -213,6 +243,10 @@ export abstract class BaseQueue {
     this.queue.on('error', (error) => {
       console.error(`Error in queue ${queueName}:`, error);
     });
+
+    this.queue.on('failed', (job, err) => {
+      console.error(`Job failed: ${job.id}, Error: ${err.message}`);
+    });
   
     this.queue.on('completed', (job: Job) => {
       job.remove();
@@ -227,11 +261,30 @@ export abstract class BaseQueue {
     });
   }
 
-  protected addJob(name: string, data: IBaseJobData): void {
-    this.queue.add(name, data, { attempts: 3, backoff: { type: 'fixed', delay: 5000 } });
+  protected async addJob(name: string, data: IBaseJobData): Promise<void> {
+    await this.queue.add(name, data, {
+      attempts: 3,
+      backoff: { type: 'fixed', delay: 5000 },
+    });
   }
 
   protected processJob(name: string, concurrency: number, callback: Queue.ProcessCallbackFunction<void>): void {
     this.queue.process(name, concurrency, callback);
   }
+
+  // protected processJob(
+  //   name: string,
+  //   concurrency: number,
+  //   callback: (job: Job, done: (error?: Error | null) => void) => void
+  // ): void {
+  //   this.queue.process(name, concurrency, (job, done) => {
+  //     try {
+  //       // Gọi callback với job và done
+  //       callback(job, done);
+  //     } catch (error) {
+  //       console.error(`Error processing job ${job.id}:`, error);
+  //       done(error as Error); // Gọi done với lỗi nếu có
+  //     }
+  //   });
+  // }
 }
