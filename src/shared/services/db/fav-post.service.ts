@@ -20,7 +20,7 @@ class FavPostService {
     }
 
     // Nếu chưa có, tạo mới bài viết yêu thích
-    return await FavPostModel.create({favoritePostData});
+    return await FavPostModel.create(favoritePostData);
   }
 
   // Bỏ bài viết khỏi danh sách yêu thích

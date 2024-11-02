@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import { authMiddleware } from '@global/helpers/auth-middleware';
 import { Add } from '@favorite-posts/controllers/add-fav-post';
-import { Get } from '@post/controllers/get-posts';
+import { Get } from '@favorite-posts/controllers/get-fav-post';
 import { Delete } from '@post/controllers/delete-post';
 import { Update } from '@post/controllers/update-post';
 
@@ -13,10 +13,10 @@ class FavPostRoutes {
   }
 
   public routes(): Router {
-    this.router.get('/favpost/:userId', authMiddleware.checkAuthentication, Get.prototype.postById);
-    this.router.get('/favpost/all/:page', authMiddleware.checkAuthentication, Get.prototype.posts);
-    this.router.get('/favpost/images/:page', authMiddleware.checkAuthentication, Get.prototype.postsWithImages);
-    this.router.get('/favpost/videos/:page', authMiddleware.checkAuthentication, Get.prototype.postsWithVideos);
+    this.router.get('/favpost/:page', authMiddleware.checkAuthentication, Get.prototype.favoritePosts);
+    // this.router.get('/favpost/all/:page', authMiddleware.checkAuthentication, Get.prototype.posts);
+    // this.router.get('/favpost/images/:page', authMiddleware.checkAuthentication, Get.prototype.postsWithImages);
+    // this.router.get('/favpost/videos/:page', authMiddleware.checkAuthentication, Get.prototype.postsWithVideos);
 
     this.router.post('/favpost', authMiddleware.checkAuthentication, Add.prototype.favoritePost);
     // this.router.post('/post/image/post', authMiddleware.checkAuthentication, Create.prototype.postWithImage);
