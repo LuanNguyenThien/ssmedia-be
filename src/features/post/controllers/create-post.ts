@@ -49,6 +49,7 @@ export class Create {
       createdPost
     });
     postQueue.addPostJob('addPostToDB', { key: req.currentUser!.userId, value: createdPost });
+    postQueue.addPostJob('analyzePostContent', { value: createdPost });
     res.status(HTTP_STATUS.CREATED).json({ message: 'Post created successfully' });
   }
 

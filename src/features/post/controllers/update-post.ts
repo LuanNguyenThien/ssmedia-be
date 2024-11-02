@@ -16,6 +16,13 @@ import { cache } from '@service/redis/cache';
 const postCache = cache.postCache;
 
 export class Update {
+  public async serverUpdatePost(postId: string, updatedPost: IPostDocument): Promise<IPostDocument> {
+    const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
+    socketIOPostObject.emit('update post', postUpdated, 'posts');
+    postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
+    return postUpdated;
+  }
+
   @joiValidation(postSchema)
   public async posts(req: Request, res: Response): Promise<void> {
     const { post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
@@ -36,6 +43,7 @@ export class Update {
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
+    // postQueue.addPostJob('analyzePostContent', { value: postUpdated });
     res.status(HTTP_STATUS.OK).json({ message: 'Post updated successfully' });
   }
 
