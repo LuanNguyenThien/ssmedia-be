@@ -8,6 +8,7 @@ import { RedisCommandRawReply } from '@redis/client/dist/lib/commands';
 import { IReactions } from '@reaction/interfaces/reaction.interface';
 
 const log: Logger = config.createLogger('postCache');
+const TRENDING_LIMIT = 200;
 
 export type PostCacheMultiType = string | number | Buffer | RedisCommandRawReply[] | IPostDocument | IPostDocument[];
 
@@ -74,6 +75,26 @@ export class PostCache extends BaseCache {
       const count: number = parseInt(postCount[0], 10) + 1;
       multi.HSET(`users:${currentUserId}`, 'postsCount', count);
       multi.exec();
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async addTrendingPost(postId: string, score: number): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+
+      // Thêm bài viết vào danh sách trending
+      await this.client.zAdd('postTrending', { score, value: postId });
+
+      // Giới hạn số lượng bài viết trending lưu trữ trong Redis
+      const trendingCount = await this.client.zCard('postTrending');
+      if (trendingCount > TRENDING_LIMIT) {
+        await this.client.zRemRangeByRank('postTrending', 0, trendingCount - TRENDING_LIMIT - 1);
+      }
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');

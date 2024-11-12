@@ -106,17 +106,17 @@ def analyze_content_with_gemini(content, language):
         1. Main Topics
         2. Educational Value (score 1-10)
         3. Relevance to Learning Community (score 1-10)
-        4. Content Appropriateness: Evaluate if the content is appropriate for a learning community. Consider factors like language, tone, and subject matter. Pay special attention to any content that might fall into the following inappropriate categories:
+        4. Content Appropriateness: Evaluate if the content is appropriate or not for a learning community. Consider factors like language, tone, and subject matter. Pay special attention to any content that might fall into the following inappropriate categories:
         {', '.join(blacklist_categories)}
-        5. Key Concepts
+        5. Key Concepts (Array[Concepts])
         6. Potential Learning Outcomes
-        7. Related Academic Disciplines
-        8. Content Classification
-        9. Engagement Potential
-        10. Credibility and Sources
+        7. Related Academic Disciplines (Array[Disciplines])
+        8. Content Classification (Type:? , Subject:?, Range Age Suitable:?)
+        9. Engagement Potential (score 1-100)
+        10. Credibility and Sources (score 1-10)
         11. Improvement Suggestions
-        12. Related Topics
-        13. Content Tags
+        12. Related Topics (Array[Topics])
+        13. Content Tags (Array[Tags])
 
         Format your response as a JSON object with these keys."""
 
