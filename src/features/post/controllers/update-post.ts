@@ -19,7 +19,7 @@ export class Update {
   public async serverUpdatePost(postId: string, updatedPost: IPostDocument): Promise<IPostDocument> {
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
     socketIOPostObject.emit('update post', postUpdated, 'posts');
-    postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
+    postQueue.addPostJob('updatePostInDB', { key: postId, value: updatedPost });
     return postUpdated;
   }
 

@@ -33,10 +33,10 @@ export class ChattyServer {
   }
 
   public start(): void {
+    this.apiMonitoring(this.app);
     this.securityMiddleware(this.app);
     this.standardMiddleware(this.app);
     this.routesMiddleware(this.app);
-    this.apiMonitoring(this.app);
     this.globalErrorHandler(this.app);
     this.startServer(this.app);
   }
@@ -127,7 +127,7 @@ export class ChattyServer {
   private startHttpServer(httpServer: http.Server): void {
     log.info(`Worker with process id of ${process.pid} has started...`);
     log.info(`Server has started with process ${process.pid}`);
-    httpServer.listen(SERVER_PORT, () => {
+    httpServer.listen(SERVER_PORT, '0.0.0.0', () => {
       log.info(`Server running on port ${SERVER_PORT}`);
     });
   }

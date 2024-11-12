@@ -25,6 +25,28 @@ const postSchema: Schema = new Schema({
     sad: { type: Number, default: 0 },
     angry: { type: Number, default: 0 }
   },
+  analysis: {
+    mainTopics: [String],
+    educationalValue: { type: Number },
+    relevance: { type: Number },
+    appropriateness: {
+      evaluation: { type: String }
+    },
+    keyConcepts: [String],
+    learningOutcomes: [String],
+    disciplines: [String],
+    classification: { 
+      type: { type: String },
+      subject: { type: String },
+      agesuitable: { type: String }
+    },
+    engagementPotential: { type: Number },
+    credibilityScore: { type: Number },
+    improvementSuggestions: [String],
+    relatedTopics: [String],
+    contentTags: [String]
+  },
+  vector: { type: Array, default: [] }, // Store the vectorized data here
   createdAt: { type: Date, default: Date.now }
 });
 
