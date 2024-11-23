@@ -9,12 +9,12 @@ const log: Logger = config.createLogger('addFavPostWorker');
 class FavPostWorker {
   public async addFavPostToDB(job: Job, done: DoneCallback): Promise<void> {
     try {
-      const  data: IFavPostDocument  = job.data;
+      const data: IFavPostDocument = job.data;
       await favPostService.addFavPost(data);
       job.progress(100);
       done(null, job.data);
     } catch (error) {
-      log.error(error);  
+      log.error(error);
       done(error as Error);
     }
   }

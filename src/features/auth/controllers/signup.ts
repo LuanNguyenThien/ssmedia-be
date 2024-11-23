@@ -68,6 +68,7 @@ export class SignUp {
         userId: userObjectId,
         uId: data.uId,
         email: data.email,
+        role: 'user',
         username: data.username,
         avatarColor: data.avatarColor
       },

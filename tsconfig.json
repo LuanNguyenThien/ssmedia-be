@@ -28,6 +28,7 @@
       "@user/*": ["src/features/user/*"],
       "@post/*": ["src/features/post/*"],
       "@favorite-posts/*": ["src/features/favorite-posts/*"],
+      "@report-posts/*": ["src/features/report-posts/*"],
       "@reaction/*": ["src/features/reactions/*"],
       "@comment/*": ["src/features/comments/*"],
       "@follower/*": ["src/features/followers/*"],
@@ -38,6 +39,7 @@
       "@service/*": ["src/shared/services/*"],
       "@socket/*": ["src/shared/sockets/*"],
       "@worker/*": ["src/shared/workers/*"],
+      "@users/*": ["src/features-admin/users/*"],
       "@root/*": ["src/*"]
     }
   }

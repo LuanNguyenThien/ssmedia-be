@@ -12,9 +12,11 @@ import { notificationRoutes } from '@notification/routes/notificationRoutes';
 import { imageRoutes } from '@image/routes/imageRoutes';
 import { chatRoutes } from '@chat/routes/chatRoutes';
 import { userRoutes } from '@user/routes/userRoutes';
+import { usersRoutes } from '@users/routes/usersRoutes';
 import { healthRoutes } from '@user/routes/healthRoutes';
-
+import { reportpostRoutes } from '@report-posts/routes/report-postRoutes';
 const BASE_PATH = '/api/v1';
+const BASE_PATH_ADMIN = '/admin';
 
 export default (app: Application) => {
   const routes = () => {
@@ -30,6 +32,7 @@ export default (app: Application) => {
     app.use(BASE_PATH, authMiddleware.verifyUser, currentUserRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, postRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, favpostRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, reportpostRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, reactionRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, commentRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, followerRoutes.routes());
@@ -37,6 +40,8 @@ export default (app: Application) => {
     app.use(BASE_PATH, authMiddleware.verifyUser, imageRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, chatRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, userRoutes.routes());
+
+    app.use(BASE_PATH_ADMIN, authMiddleware.verifyAdmin, usersRoutes.routes());
   };
   routes();
 };

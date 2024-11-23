@@ -20,7 +20,7 @@ Accept: application/json
 withCredentials: true
 
 {
-  "username": "",
+  "username": "", 
   "password": "",
   "email": "",
   "avatarColor": "",

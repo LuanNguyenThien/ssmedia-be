@@ -28,6 +28,7 @@ export class SignIn {
       {
         userId: user._id,
         uId: existingUser.uId,
+        role: existingUser.role,
         email: existingUser.email,
         username: existingUser.username,
         avatarColor: existingUser.avatarColor
