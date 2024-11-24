@@ -8,6 +8,7 @@ import { cache } from '@service/redis/cache';
 // const postCache: PostCache = new PostCache();
 const postCache = cache.postCache;
 const PAGE_SIZE = 10;
+const REDIS_BATCH_SIZE = 50;
 
 export class Get {
 
@@ -23,19 +24,50 @@ export class Get {
     return res.status(HTTP_STATUS.OK).json({ message: 'Post found', post });
   }
 
+  // public async posts(req: Request, res: Response): Promise<void> {
+  //   const { page } = req.params;
+  //   const skip: number = (parseInt(page) - 1) * PAGE_SIZE;
+  //   const limit: number = PAGE_SIZE * parseInt(page);
+  //   const newSkip: number = skip === 0 ? skip : skip + 1;
+  //   let posts: IPostDocument[] = [];
+  //   let totalPosts = 0;
+  //   const cachedPosts: IPostDocument[] = await postCache.getPostsFromCache('post', skip, limit-1);
+  //   if (cachedPosts.length) {
+  //     posts = cachedPosts;
+  //     totalPosts = await postCache.getTotalPostsInCache();
+  //   } else {
+  //     posts = await postService.getPosts({}, skip, limit, { createdAt: -1 });
+  //     totalPosts = await postService.postsCount();
+  //   }
+  //   res.status(HTTP_STATUS.OK).json({ message: 'All posts', posts, totalPosts });
+  // }
   public async posts(req: Request, res: Response): Promise<void> {
     const { page } = req.params;
+    const userId = req.currentUser!.userId;
     const skip: number = (parseInt(page) - 1) * PAGE_SIZE;
-    const limit: number = PAGE_SIZE * parseInt(page);
-    const newSkip: number = skip === 0 ? skip : skip + 1;
+    const limit: number = PAGE_SIZE;
     let posts: IPostDocument[] = [];
     let totalPosts = 0;
-    const cachedPosts: IPostDocument[] = await postCache.getPostsFromCache('post', newSkip, limit);
-    if (cachedPosts.length) {
+
+    // Tạo khóa Redis duy nhất cho mỗi người dùng
+    const redisKey = `user:${userId}:posts`;
+    // Lấy bài viết từ Redis
+    const cachedPosts: IPostDocument[] = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
+    if (cachedPosts.length === limit) {
       posts = cachedPosts;
-      totalPosts = await postCache.getTotalPostsInCache();
+      totalPosts = await postService.postsCount();
     } else {
-      posts = await postService.getPosts({}, skip, limit, { createdAt: -1 });
+      // Lấy thêm bài viết từ MongoDB
+      const redisCount = await postCache.getTotalPostsforUser(redisKey);
+      const mongoSkip = redisCount;
+      const mongoLimit = REDIS_BATCH_SIZE;
+      const newPosts = await postService.getPostsforUserByVector(userId, mongoSkip, mongoLimit);
+
+      // Lưu bài viết vào Redis
+      await postCache.savePostsforUserToCache(redisKey, newPosts);
+
+      // Lấy lại bài viết từ Redis
+      posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
       totalPosts = await postService.postsCount();
     }
     res.status(HTTP_STATUS.OK).json({ message: 'All posts', posts, totalPosts });

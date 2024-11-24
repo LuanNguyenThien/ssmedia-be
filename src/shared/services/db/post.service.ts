@@ -3,6 +3,9 @@ import { PostModel } from '@post/models/post.schema';
 import { IUserDocument } from '@user/interfaces/user.interface';
 import { UserModel } from '@user/models/user.schema';
 import { Query, UpdateQuery } from 'mongoose';
+import { cache } from '@service/redis/cache';
+
+const postCache = cache.postCache;
 
 class PostService {
   public async addPostToDB(userId: string, createdPost: IPostDocument): Promise<void> {
@@ -56,6 +59,90 @@ class PostService {
   public async editPost(postId: string, updatedPost: IPostDocument): Promise<void> {
     const updatePost: UpdateQuery<IPostDocument> = PostModel.updateOne({ _id: postId }, { $set: updatedPost });
     await Promise.all([updatePost]);
+  }
+
+  public async getPostsforUserByVector(userId: string, mongoSkip: number, mongoLimit: number): Promise<IPostDocument[]> {
+    const user: IUserDocument | null = await UserModel.findById(userId);
+    if (!user) {
+      return [];
+    }else {
+      const userVector: number[] = user.user_vector as number[];
+      console.log(userVector);
+      if (userVector !== undefined && userVector.length === 0) {
+        const posts = await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
+        return posts;
+      }
+      const posts = await this.searchPostsByVector(userVector, mongoSkip, mongoLimit);
+      return posts;
+    }
+  }
+
+  public async searchPostsByVector(queryVector: number[], mongoSkip?: number, mongoLimit?: number): Promise<IPostDocument[]> {
+    // const pipeline: (PipelineStage | PipelineStage.CustomStages)[] = [
+    //   {
+    //     $vectorSearch: {
+    //       index: "vectorPost_index",
+    //       path: "post_embedding",
+    //       queryVector: queryVector,
+    //       numCandidates: 25,
+    //       limit: 3
+    //     }
+    //   },
+    //   {
+    //     $project: {
+    //       _id: 1,
+    //       username: 1,
+    //       post: 1,
+    //       score: {
+    //         $meta: 'vectorSearchScore'
+    //       }
+    //     }
+    //   },
+    //   {
+    //     $sort: {
+    //       score: -1  // Sắp xếp theo điểm liên quan
+    //     }
+    //   }
+    // ];
+    const pipeline: any[] = [
+      {
+        $vectorSearch: {
+          index: "vectorPost_index",
+          path: "post_embedding",
+          queryVector: queryVector,
+          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? mongoSkip + mongoLimit + 25 : 20,
+          limit: mongoSkip !== undefined && mongoLimit !== undefined ? mongoSkip + mongoLimit : 8
+        }
+      } as any,
+      {
+        $project: {
+          analysis: 0,
+          post_embedding: 0,
+          score: {
+            $meta: 'vectorSearchScore'
+          }
+        }
+      },
+      {
+        $sort: {
+          score: -1  // Sắp xếp theo điểm liên quan
+        }
+      }
+    ];
+
+    if (mongoSkip !== undefined && mongoLimit !== undefined) {
+      pipeline.push(
+        {
+          $skip: mongoSkip  // Bỏ qua các kết quả trước đó
+        },
+        {
+          $limit: mongoLimit  // Giới hạn số lượng kết quả trả về
+        }
+      );
+    }
+
+    const posts = await PostModel.aggregate(pipeline).exec();
+    return posts;
   }
 }
 
