@@ -28,7 +28,8 @@ const userSchema: Schema = new Schema({
   location: { type: String, default: '' },
   quote: { type: String, default: '' },
   bgImageVersion: { type: String, default: '' },
-  bgImageId: { type: String, default: '' }
+  bgImageId: { type: String, default: ''},
+  user_vector: { type: [Number] }
 });
 
 const UserModel: Model<IUserDocument> = model<IUserDocument>('User', userSchema, 'User');

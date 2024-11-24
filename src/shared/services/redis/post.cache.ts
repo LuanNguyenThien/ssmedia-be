@@ -17,6 +17,58 @@ export class PostCache extends BaseCache {
     super('postCache');
   }
 
+  public async clearPersonalizedPostsCache(key: string): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      const redisKey = `user:${key}:posts`;
+      await this.client.del(redisKey);
+    } catch (error) {
+      log.error("Lỗi khi xóa cache", error, key);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async getPostsforUserFromCache(key: string, skip: number, limit: number): Promise<IPostDocument[]> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      const posts = await this.client.lRange(key, skip, skip + limit - 1);
+      return posts.map(post => JSON.parse(post));
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async getTotalPostsforUser(key: string): Promise<number> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      return await this.client.lLen(key);
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async savePostsforUserToCache(key: string, posts: IPostDocument[]): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      const serializedPosts = posts.map(post => JSON.stringify(post));
+      await this.client.rPush(key, serializedPosts);
+      await this.client.expire(key, 1800);
+    } catch (error) {
+      log.error("Lỗi ở đây", error, key, posts);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
   public async savePostToCache(data: ISavePostToCache): Promise<void> {
     const { key, currentUserId, uId, createdPost } = data;
     const {
@@ -119,6 +171,33 @@ export class PostCache extends BaseCache {
       post.createdAt = new Date(Helpers.parseJson(`${post.createdAt}`)) as Date;
 
       return post;
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async getTrendingPosts(start: number, end: number): Promise<IPostDocument[]> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+
+      const reply: string[] = await this.client.ZRANGE('postTrending', start, end, { REV: true });
+      const multi: ReturnType<typeof this.client.multi> = this.client.multi();
+      for (const value of reply) {
+        multi.HGETALL(`posts:${value}`);
+      }
+      const replies: PostCacheMultiType = (await multi.exec()) as PostCacheMultiType;
+      const postReplies: IPostDocument[] = [];
+      for (const post of replies as IPostDocument[]) {
+        post.commentsCount = Helpers.parseJson(`${post.commentsCount}`) as number;
+        post.reactions = Helpers.parseJson(`${post.reactions}`) as IReactions;
+        post.createdAt = new Date(Helpers.parseJson(`${post.createdAt}`)) as Date;
+        postReplies.push(post);
+      }
+
+      return postReplies;
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
