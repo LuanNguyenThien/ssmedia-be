@@ -87,3 +87,10 @@ DELETE {{baseUrl}}/{{urlPath}}/post/<postId>
 Content-Type: application/json
 Accept: application/json
 withCredentials: true
+
+###
+GET {{baseUrl}}/{{urlPath}}/search/Lịch sử hình thành bộ máy nhà nước ta?
+Content-Type: application/json
+Accept: application/json
+withCredentials: true
+
