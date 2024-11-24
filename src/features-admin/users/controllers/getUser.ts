@@ -10,7 +10,6 @@ const PAGE_SIZE = 5;
 export class getUser {
   public async getAllUsers(req: Request, res: Response): Promise<void> {
     const { page } = req.params;
-    console.log(req.currentUser!.userId);
     const skip: number = (parseInt(page) - 1) * PAGE_SIZE;
     const users: IUserDocument[] = await userService.getAllUsers(req.currentUser!.userId, skip, PAGE_SIZE);
     const totalUsers: number = await userService.getTotalUsersInDB();

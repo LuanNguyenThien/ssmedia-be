@@ -13,16 +13,14 @@ export class AuthMiddleware {
     try {
       const payload: AuthPayload = JWT.verify(req.session?.jwt, config.JWT_TOKEN!) as AuthPayload;
       req.currentUser = payload;
+  
 
-      if (payload.role !== 'USER') {
-        throw new NotAuthorizedError(`Access denied. Required role: USER`);
-      }
     } catch (error) {
-      throw new NotAuthorizedError('Token is invalid. Please login again.');
-    }
+      throw new NotAuthorizedError('Token is invalid. Please login again.');}
     next();
   }
   public verifyAdmin(req: Request, _res: Response, next: NextFunction): void {
+  
     if (!req.session?.jwt) {
       throw new NotAuthorizedError('Token is not available. Please login again.');
     }
@@ -30,7 +28,7 @@ export class AuthMiddleware {
     try {
       const payload: AuthPayload = JWT.verify(req.session?.jwt, config.JWT_TOKEN!) as AuthPayload;
       req.currentUser = payload;
-
+      console.log(payload.role, "role", 'ADMIN') ;
       if (payload.role !== 'ADMIN') {
         throw new NotAuthorizedError(`Access denied. Required role: ADMIN`);
       }

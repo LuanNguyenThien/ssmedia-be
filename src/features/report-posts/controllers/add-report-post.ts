@@ -14,7 +14,7 @@ const postCache = cache.postCache;
 export class Add {
   @joiValidation(ReportPostsSchema)
   public async reportPost(req: Request, res: Response): Promise<void> {
-    const { postId } = req.body;
+    const { postId, content } = req.body;
     const userId = req.currentUser!.userId;
     const reportPostObjectId: ObjectId = new ObjectId();
 
@@ -22,6 +22,7 @@ export class Add {
       _id: reportPostObjectId,
       userId,
       postId,
+      content,
       createdAt: new Date()
     } as IReportPostDocument;
 

@@ -16,7 +16,7 @@ import { usersRoutes } from '@users/routes/usersRoutes';
 import { healthRoutes } from '@user/routes/healthRoutes';
 import { reportpostRoutes } from '@report-posts/routes/report-postRoutes';
 const BASE_PATH = '/api/v1';
-const BASE_PATH_ADMIN = '/admin';
+const BASE_PATH_ADMIN = '/api/v1/admin';
 
 export default (app: Application) => {
   const routes = () => {
@@ -28,6 +28,7 @@ export default (app: Application) => {
 
     app.use(BASE_PATH, authRoutes.routes());
     app.use(BASE_PATH, authRoutes.signoutRoute());
+    app.use(BASE_PATH_ADMIN, authMiddleware.verifyAdmin, usersRoutes.routes());
 
     app.use(BASE_PATH, authMiddleware.verifyUser, currentUserRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, postRoutes.routes());
@@ -40,8 +41,6 @@ export default (app: Application) => {
     app.use(BASE_PATH, authMiddleware.verifyUser, imageRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, chatRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, userRoutes.routes());
-
-    app.use(BASE_PATH_ADMIN, authMiddleware.verifyAdmin, usersRoutes.routes());
   };
   routes();
 };
