@@ -25,6 +25,7 @@ const postSchema: Schema = new Schema({
     sad: { type: Number, default: 0 },
     angry: { type: Number, default: 0 }
   },
+  favoritedBy: { type: [String], default: [] },
   analysis: {
     mainTopics: [String],
     educationalValue: { type: Number },

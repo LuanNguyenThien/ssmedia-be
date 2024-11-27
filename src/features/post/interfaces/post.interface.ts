@@ -43,6 +43,8 @@ export interface IPostDocument extends Document {
   };
   vector?: any[]; // Store the vectorized data here
   createdAt?: Date;
+  score?: number;
+  favoritedBy?: string[];
 }
 
 export interface IGetPostsQuery {
