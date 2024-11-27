@@ -45,7 +45,7 @@ class PostService {
   }
 
   public async postsCount(): Promise<number> {
-    const count: number = await PostModel.find({}).countDocuments();
+    const count: number = await PostModel.find({ privacy: { $ne: 'Private' } }).countDocuments();
     return count;
   }
 
@@ -72,12 +72,12 @@ class PostService {
         const posts = await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
         return posts;
       }
-      const posts = await this.searchPostsByVector(userVector, mongoSkip, mongoLimit);
+      const posts = await this.searchPostsByVector(userVector, mongoSkip, mongoLimit, userId);
       return posts;
     }
   }
 
-  public async searchPostsByVector(queryVector: number[], mongoSkip?: number, mongoLimit?: number): Promise<IPostDocument[]> {
+  public async searchPostsByVector(queryVector: number[], mongoSkip?: number, mongoLimit?: number, userId?: string): Promise<IPostDocument[]> {
     // const pipeline: (PipelineStage | PipelineStage.CustomStages)[] = [
     //   {
     //     $vectorSearch: {
@@ -104,16 +104,25 @@ class PostService {
     //     }
     //   }
     // ];
+    let allCachedPosts: IPostDocument[] = [];
+    if(mongoLimit !== undefined && mongoSkip !== undefined) {
+      allCachedPosts = await postCache.getAllPostsforUserFromCache(userId as string);
+    }
     const pipeline: any[] = [
       {
         $vectorSearch: {
           index: "vectorPost_index",
           path: "post_embedding",
           queryVector: queryVector,
-          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? mongoSkip + mongoLimit + 25 : 20,
-          limit: mongoSkip !== undefined && mongoLimit !== undefined ? mongoSkip + mongoLimit : 8
+          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit + 25 : 20,
+          limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit : 8
         }
       } as any,
+      {
+        $match: {
+          privacy: { $ne: 'Private' }  // Lọc các bài post có privacy khác 'Private'
+        }
+      },
       {
         $project: {
           analysis: 0,
@@ -130,19 +139,23 @@ class PostService {
       }
     ];
 
+    const mongoPosts = await PostModel.aggregate(pipeline).exec();
     if (mongoSkip !== undefined && mongoLimit !== undefined) {
-      pipeline.push(
-        {
-          $skip: mongoSkip  // Bỏ qua các kết quả trước đó
-        },
-        {
-          $limit: mongoLimit  // Giới hạn số lượng kết quả trả về
-        }
-      );
-    }
+      // pipeline.push(
+      //   {
+      //     $skip: mongoSkip  // Bỏ qua các kết quả trước đó
+      //   },
+      //   {
+      //     $limit: mongoLimit  // Giới hạn số lượng kết quả trả về
+      //   }
+      // );
+      const combinedPosts = [...allCachedPosts, ...mongoPosts];
+      const uniquePosts = Array.from(new Set(combinedPosts.map(post => post._id.toString())))
+        .map(id => combinedPosts.find(post => post._id.toString() === id));
 
-    const posts = await PostModel.aggregate(pipeline).exec();
-    return posts;
+      return uniquePosts.slice(allCachedPosts.length as number, allCachedPosts.length as number + mongoLimit as number);
+    }
+    return mongoPosts;
   }
 }
 

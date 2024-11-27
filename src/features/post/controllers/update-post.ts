@@ -43,7 +43,7 @@ export class Update {
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
-    // postQueue.addPostJob('analyzePostContent', { value: postUpdated });
+    postQueue.addPostJob('analyzePostContent', { value: postUpdated });
     res.status(HTTP_STATUS.OK).json({ message: 'Post updated successfully' });
   }
 

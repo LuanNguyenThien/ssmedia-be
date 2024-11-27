@@ -30,18 +30,82 @@ export class PostCache extends BaseCache {
     }
   }
 
-  public async getPostsforUserFromCache(key: string, skip: number, limit: number): Promise<IPostDocument[]> {
+  public async getAllPostsforUserFromCache(key: string): Promise<IPostDocument[]> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-      const posts = await this.client.lRange(key, skip, skip + limit - 1);
+      key = `user:${key}:posts`;
+      const totalPosts = await this.client.lLen(key);
+      const posts = await this.client.lRange(key, 0, totalPosts - 1);
       return posts.map(post => JSON.parse(post));
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
     }
   }
+
+  // public async getPostsforUserFromCache(key: string, skip: number, limit: number): Promise<IPostDocument[]> {
+  //   try {
+  //     if (!this.client.isOpen) {
+  //       await this.client.connect();
+  //     }
+  //     const posts = await this.client.lRange(key, skip, skip + limit - 1);
+  //     return posts.map(post => JSON.parse(post));
+  //   } catch (error) {
+  //     log.error(error);
+  //     throw new ServerError('Server error. Try again.');
+  //   }
+  // }   
+
+  public async getPostsforUserFromCache(key: string, skip: number, limit: number): Promise<IPostDocument[]> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      const postIdsWithScores = await this.client.lRange(key, skip, skip + limit - 1);
+      const multi = this.client.multi();
+      for (const postIdWithScore of postIdsWithScores) {
+        const { _id } = JSON.parse(postIdWithScore);
+        multi.HGETALL(`posts:${_id}`);
+      }
+      const replies: PostCacheMultiType = (await multi.exec()) as PostCacheMultiType;
+      const postReplies: IPostDocument[] = [];
+      for (const post of replies as IPostDocument[]) {
+        post.commentsCount = Helpers.parseJson(`${post.commentsCount}`) as number;
+        post.reactions = Helpers.parseJson(`${post.reactions}`) as IReactions;
+        post.createdAt = new Date(Helpers.parseJson(`${post.createdAt}`)) as Date;
+        postReplies.push(post);
+      }
+
+      return postReplies;
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  // public async updatePostforUserInCache(key: string, postId: string, updatedPost: IPostDocument): Promise<void> {
+  //   try {
+  //     if (!this.client.isOpen) {
+  //       await this.client.connect();
+  //     }
+  //     const totalPosts = await this.client.lLen(key);
+  //     for (let i = 0; i < totalPosts; i++) {
+  //       const post = await this.client.lIndex(key, i);
+  //       if (post) {
+  //         const parsedPost = JSON.parse(post);
+  //         if (parsedPost._id === postId) {
+  //           await this.client.lSet(key, i, JSON.stringify(updatedPost));
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   } catch (error) {
+  //     log.error(error);
+  //     throw new ServerError('Server error. Try again.');
+  //   }
+  // }
 
   public async getTotalPostsforUser(key: string): Promise<number> {
     try {
@@ -55,14 +119,28 @@ export class PostCache extends BaseCache {
     }
   }
 
-  public async savePostsforUserToCache(key: string, posts: IPostDocument[]): Promise<void> {
+  // public async savePostsforUserToCache(key: string, posts: IPostDocument[]): Promise<void> {
+  //   try {
+  //     if (!this.client.isOpen) {
+  //       await this.client.connect();
+  //     }
+  //     const serializedPosts = posts.map(post => JSON.stringify(post));
+  //     await this.client.rPush(key, serializedPosts);
+  //     await this.client.expire(key, 1800);
+  //   } catch (error) {
+  //     log.error("Lỗi ở đây", error, key, posts);
+  //     throw new ServerError('Server error. Try again.');
+  //   }
+  // }
+
+  public async savePostsforUserToCache(key: string, posts: { _id: string, score?: number }[]): Promise<void> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-      const serializedPosts = posts.map(post => JSON.stringify(post));
+      const serializedPosts = posts.map(post => JSON.stringify({ _id: post._id, score: post.score }));
       await this.client.rPush(key, serializedPosts);
-      await this.client.expire(key, 1800);
+      await this.client.expire(key, 1800); // Đặt TTL là 30 phút (1800 giây)
     } catch (error) {
       log.error("Lỗi ở đây", error, key, posts);
       throw new ServerError('Server error. Try again.');
@@ -411,6 +489,28 @@ export class PostCache extends BaseCache {
         // Nếu chưa tồn tại, thêm bài viết yêu thích vào cache
         await this.client.ZADD(`favPosts:${userId}`, { score: Date.now(), value: postId });
       }
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async toggleSavedByForPost(postId: string, userId: string): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      const postKey = `posts:${postId}`;
+      const savedBy: string[] = await this.client.HGET(postKey, 'savedBy').then(data => data ? JSON.parse(data) : []);
+      const userIndex = savedBy.indexOf(userId);
+      if (userIndex === -1) {
+        // Nếu userId chưa có trong danh sách, thêm vào
+        savedBy.push(userId);
+      } else {
+        // Nếu userId đã có, xóa khỏi danh sách
+        savedBy.splice(userIndex, 1);
+      }
+       await this.client.HSET(postKey, 'savedBy', JSON.stringify(savedBy));
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
