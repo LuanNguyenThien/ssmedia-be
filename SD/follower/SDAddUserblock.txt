@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant AddUser as AddUser
+    participant Queue as blockedUserQueue
+
+    User->>Controller: HTTP Request (block)
+    activate Controller
+    Controller->>Controller: updateBlockedUser(followerId, userId, 'block')
+    activate Controller
+    deactivate Controller
+    Controller->>Queue: addBlockedUserJob('addBlockedUserToDB', { keyOne, keyTwo, type })
+    activate Queue
+    deactivate Queue
+    Controller-->>User: HTTP Response (200 OK, { message: 'User blocked' })
+    deactivate Controller

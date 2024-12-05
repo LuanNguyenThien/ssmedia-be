@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant ReactionCache as reactionCache
+    participant ReactionQueue as reactionQueue
+
+    User->>Controller: Remove.reaction(req, res)
+    activate Controller
+    Controller->>ReactionCache: removePostReactionFromCache(postId, username, postReactions)
+    activate ReactionCache
+    ReactionCache-->>Controller: Cache updated
+    deactivate ReactionCache
+    Controller->>ReactionQueue: addReactionJob('removeReactionFromDB', databaseReactionData)
+    activate ReactionQueue
+    ReactionQueue-->>Controller: Job added
+    deactivate ReactionQueue
+    Controller->>User: res.status(HTTP_STATUS.OK).json({ message: 'Reaction removed from post' })
+    deactivate Controller

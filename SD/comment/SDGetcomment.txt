@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant CommentCache as CommentCache
+    participant CommentService as CommentService
+
+    User->>Controller: HTTP Request (postId)
+    activate Controller
+    Controller->>CommentCache: getCommentsFromCache(postId)
+    activate CommentCache
+    CommentCache-->>Controller: cachedComments
+    deactivate CommentCache
+    alt cachedComments is empty
+        Controller->>CommentService: getPostComments({ postId }, { createdAt: -1 })
+        activate CommentService
+        CommentService-->>Controller: comments
+        deactivate CommentService
+    else cachedComments is not empty
+        Controller->>Controller: comments = cachedComments
+    end
+    Controller-->>User: HTTP Response (Post comments, comments)
+    deactivate Controller

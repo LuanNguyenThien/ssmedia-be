@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant User as User
+    participant SignUp as Controller
+    participant AuthService as AuthService
+    participant Helpers as Helpers
+    participant Cloudinary as Cloudinary
+    participant UserCache as UserCache
+    participant AuthQueue as AuthQueue
+    participant UserQueue as UserQueue
+
+    User->>SignUp: create(req, res)
+    activate SignUp
+    SignUp->>AuthService: getUserByUsernameOrEmail(username, email)
+    activate AuthService
+    AuthService-->>SignUp: checkIfUserExist
+    deactivate AuthService
+    SignUp->>Helpers: generateRandomIntegers(12)
+    activate Helpers
+    Helpers-->>SignUp: uId
+    deactivate Helpers
+    SignUp->>SignUp: signupData({ _id, uId, username, email, password, avatarColor })
+    SignUp->>Cloudinary: uploads(avatarImage, userObjectId, true, true)
+    activate Cloudinary
+    Cloudinary-->>SignUp: result
+    deactivate Cloudinary
+    SignUp->>SignUp: userData(authData, userObjectId)
+    SignUp->>UserCache: saveUserToCache(userObjectId, uId, userDataForCache)
+    activate UserCache
+    UserCache-->>SignUp: 
+    deactivate UserCache
+    SignUp->>AuthQueue: addAuthUserJob('addAuthUserToDB', { value: authData })
+    activate AuthQueue
+    AuthQueue-->>SignUp: 
+    deactivate AuthQueue
+    SignUp->>UserQueue: addUserJob('addUserToDB', { value: userDataForCache })
+    activate UserQueue
+    UserQueue-->>SignUp: 
+    deactivate UserQueue
+    SignUp->>SignUp: signToken(authData, userObjectId)
+    SignUp-->>User: res.status(HTTP_STATUS.CREATED).json({ message, user, token })
+    deactivate SignUp

@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant User
+    participant Controller
+    participant Session
+    
+
+    User->>Controller: HTTP Request (SignOut)
+    Controller->>Session: Set session to null
+    Controller->>User: Set status to OK
+    Controller->>User: Send JSON response {"message": "Logout successful", "user": {}, "token": ""}
+    

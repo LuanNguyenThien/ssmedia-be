@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant PostCache as postCache
+    participant FavPostService as favPostService
+
+    User->>Controller: HTTP Request (page)
+    activate Controller
+    Controller->>Controller: Extract page and userId
+    Controller->>Controller: Calculate skip and limit
+    Controller->>PostCache: getFavoritePostsFromCache(userId)
+    activate PostCache
+    PostCache-->>Controller: cachedPosts
+    deactivate PostCache
+    alt cachedPosts is not empty
+        Controller->>Controller: favposts = cachedPosts
+    else cachedPosts is empty
+        Controller->>FavPostService: getFavoritePosts(userId, skip, limit)
+        activate FavPostService
+        FavPostService-->>Controller: favposts
+        deactivate FavPostService
+    end
+    Controller-->>User: HTTP Response (All favorite posts, favposts)
+    deactivate Controller

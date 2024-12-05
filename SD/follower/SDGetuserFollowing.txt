@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant FollowerCache as FollowerCache
+    participant FollowerService as FollowerService
+
+    User->>Controller: HTTP Request (userFollowing)
+    activate Controller
+    Controller->>Controller: new mongoose.Types.ObjectId(req.currentUser!.userId)
+    Controller->>FollowerCache: getFollowersFromCache(`following:${req.currentUser!.userId}`)
+    activate FollowerCache
+    FollowerCache-->>Controller: cachedFollowees
+    deactivate FollowerCache
+    alt cachedFollowees.length
+        Controller->>Controller: following = cachedFollowees
+    else
+        Controller->>FollowerService: getFolloweeData(userObjectId)
+        activate FollowerService
+        FollowerService-->>Controller: followeeData
+        deactivate FollowerService
+        Controller->>Controller: following = followeeData
+    end
+    Controller->>User: HTTP Response (200 OK, { message: 'User following', following })
+    deactivate Controller

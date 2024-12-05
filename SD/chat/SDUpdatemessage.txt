@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant Client as User
+    participant Server as Controller
+    participant messageCache as messageCache
+    participant socketIOChatObject as socketIOChatObject
+    participant chatQueue as chatQueue
+
+    Client->>Server: POST /message
+    activate Server
+    Server->>Server: Extract senderId, receiverId from req.body
+    Server->>messageCache: updateChatMessages(senderId, receiverId)
+    activate messageCache
+    messageCache-->>Server: updatedMessage
+    deactivate messageCache
+    Server->>socketIOChatObject: emit('message read', updatedMessage)
+    Server->>socketIOChatObject: emit('chat list', updatedMessage)
+    Server->>chatQueue: addChatJob('markMessagesAsReadInDB', { senderId, receiverId })
+    Server->>Client: res.status(200).json({ message: 'Message marked as read' })
+    deactivate Server

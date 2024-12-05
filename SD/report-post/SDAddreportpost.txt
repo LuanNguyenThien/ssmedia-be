@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant Cache as postCache
+    participant Queue as reportPostQueue
+   
+
+    User->>Controller: POST /reportpost
+    activate Controller
+    Controller->>Controller: Extract postId, content, userId
+    Controller->>Controller: Create reportPostObjectId
+    Controller->>Controller: Create reportPost object
+    Controller->>Cache: toggleReportPostInCache(userId, postId)
+    Controller->>Queue: addReportPostJob('addreportPostToDB', reportPost)
+    Controller->>User: res.status(HTTP_STATUS.CREATED).json({ message: 'Report post successfully' })
+    deactivate Controller

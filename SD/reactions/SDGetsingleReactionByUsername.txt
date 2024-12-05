@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant Cache as reactionCache
+    participant Service as reactionService
+
+    User->>Controller: singleReactionByUsername(req, res)
+    activate Controller
+    Controller->>Cache: getSingleReactionByUsernameFromCache(postId, username)
+    activate Cache
+    Cache-->>Controller: cachedReaction
+    deactivate Cache
+
+    alt cachedReaction exists
+        Controller-->>Controller: reactions = cachedReaction
+    else
+        Controller->>Service: getSinglePostReactionByUsername(postId, username)
+        activate Service
+        Service-->>Controller: reactions
+        deactivate Service
+    end
+
+    Controller-->>User: res.status(HTTP_STATUS.OK).json(...)
+    deactivate Controller

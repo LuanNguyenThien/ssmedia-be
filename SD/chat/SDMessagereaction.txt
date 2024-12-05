@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant User as User
+    participant Message as Controller
+    participant MessageCache as MessageCache
+    participant SocketIO as socketIOChatObject
+    participant ChatQueue as chatQueue
+
+    User->>Message: reaction(req, res)
+    activate Message
+    Message->>MessageCache: updateMessageReaction(conversationId, messageId, reaction, username, type)
+    activate MessageCache
+    MessageCache-->>Message: updatedMessage
+    deactivate MessageCache
+    Message->>SocketIO: emit('message reaction', updatedMessage)
+    activate SocketIO
+    deactivate SocketIO
+    Message->>ChatQueue: addChatJob('updateMessageReaction', { messageId, senderName, reaction, type })
+    activate ChatQueue
+    deactivate ChatQueue
+    Message->>User: res.status(200).json({ message: 'Message reaction added' })
+    deactivate Message

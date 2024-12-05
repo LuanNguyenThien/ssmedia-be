@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant User as User
+    participant Update as Controller
+    participant Socket as socketIONotificationObject
+    participant Queue as notificationQueue
+
+    User->>Update: HTTP Request (update notification)
+    activate Update
+    Update->>Socket: emit('update notification', notificationId)
+    activate Socket
+    deactivate Socket
+    Update->>Queue: addNotificationJob('updateNotification', { key: notificationId })
+    activate Queue
+    deactivate Queue
+    Update-->>User: HTTP Response (200 OK, { message: 'Notification marked as read' })
+    deactivate Update

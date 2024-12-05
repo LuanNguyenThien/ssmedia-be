@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant User as User
+    participant Get as Controller
+    participant NotificationService as NotificationService
+
+    User->>Get: notifications(req, res)
+    activate Get
+    Get->>NotificationService: getNotifications(req.currentUser!.userId)
+    activate NotificationService
+    NotificationService-->>Get: notifications
+    deactivate NotificationService
+    Get-->>User: res.status(HTTP_STATUS.OK).json({ message: 'User notifications', notifications })
+    deactivate Get

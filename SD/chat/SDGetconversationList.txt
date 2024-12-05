@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant MessageCache as MessageCache
+    participant ChatService as ChatService
+
+    User->>Controller: conversationList(req, res)
+    activate Controller
+    Controller->>MessageCache: getUserConversationList(userId)
+    activate MessageCache
+    MessageCache-->>Controller: cachedList
+    deactivate MessageCache
+    alt cachedList is empty
+        Controller->>ChatService: getUserConversationList(userId)
+        activate ChatService
+        ChatService-->>Controller: list
+        deactivate ChatService
+    end
+    Controller->>User: res.status(HTTP_STATUS.OK).json({ message: 'User conversation list', list })
+    deactivate Controller

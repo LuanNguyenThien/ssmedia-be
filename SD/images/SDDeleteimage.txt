@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant SocketIO as socketIOImageObject
+    participant ImageQueue as imageQueue
+
+    User->>Controller: DELETE /image/:imageId
+    activate Controller
+    Controller->>SocketIO: emit('delete image', imageId)
+    Controller->>ImageQueue: addImageJob('removeImageFromDB', { imageId })
+    Controller->>User: HTTP 200 OK, { message: 'Image deleted successfully' }
+    deactivate Controller

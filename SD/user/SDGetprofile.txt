@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant UserCache as UserCache
+    participant UserService as UserService
+
+    User->>Controller: profile(req, res)
+    activate Controller
+    Controller->>UserCache: getUserFromCache(req.currentUser!.userId)
+    activate UserCache
+    UserCache-->>Controller: cachedUser
+    deactivate UserCache
+
+    alt cachedUser exists
+        Controller-->>Controller: existingUser = cachedUser
+    else
+        Controller->>UserService: getUserById(req.currentUser!.userId)
+        activate UserService
+        UserService-->>Controller: existingUser
+        deactivate UserService
+    end
+
+    Controller-->>User: res.status(HTTP_STATUS.OK).json({ message: 'Get user profile', user: existingUser })
+    deactivate Controller

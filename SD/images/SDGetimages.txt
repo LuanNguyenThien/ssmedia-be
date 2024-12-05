@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant User as User
+    participant Get as Controller
+    participant ImageService as ImageService
+
+    User->>Get: images(req, res)
+    activate Get
+    Get->>ImageService: getImages(req.params.userId)
+    activate ImageService
+    ImageService-->>Get: images
+    deactivate ImageService
+    Get-->>User: res.status(HTTP_STATUS.OK).json({ message: 'User images', images })
+    deactivate Get

@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant Client as User
+    participant Controller as Controller
+    participant AuthService as AuthService
+    participant UserService as UserService
+    participant JWT as JWT
+    participant Config as Config
+
+    Client->>Controller: HTTP Request (username, password)
+    Controller->>AuthService: getAuthUserByUsername(username)
+    AuthService-->>Controller: existingUser
+    alt User does not exist
+        Controller->>Client: BadRequestError('Tài khoản không tồn tại')
+    else User exists
+        Controller->>existingUser: comparePassword(password)
+        existingUser-->>Controller: passwordsMatch
+        alt Passwords do not match
+            Controller->>Client: BadRequestError('Mật khẩu không chính xác')
+        else Passwords match
+            Controller->>UserService: getUserByAuthId(existingUser._id)
+            UserService-->>Controller: user
+            Controller->>JWT: sign({ userId, uId, role, email, username, avatarColor }, config.JWT_TOKEN)
+            JWT-->>Controller: userJwt
+            Controller->>Client: HTTP Response (User login successfully, user, token)
+        end
+    end

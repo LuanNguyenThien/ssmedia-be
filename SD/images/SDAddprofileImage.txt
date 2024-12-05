@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant Client as User
+    participant Server as Controller
+    participant Uploads as Uploads
+    participant UserCache as UserCache
+    participant SocketIO as SocketIO
+    participant ImageQueue as ImageQueue
+    Client->>Server: POST /profileImage
+    activate Server
+    Server->>Uploads: uploads(req.body.image, req.currentUser!.userId, true, true)
+    activate Uploads
+    Uploads-->>Server: UploadApiResponse
+    deactivate Uploads
+    alt Upload failed
+        Server-->>Client: 400 Bad Request
+    else Upload succeeded
+        Server->>UserCache: updateSingleUserItemInCache(req.currentUser!.userId, 'profilePicture', url)
+        activate UserCache
+        UserCache-->>Server: IUserDocument
+        deactivate UserCache
+        Server->>SocketIO: emit('update user', cachedUser)
+        activate SocketIO
+        deactivate SocketIO
+        Server->>ImageQueue: addImageJob('addUserProfileImageToDB', { key, value, imgId, imgVersion })
+        activate ImageQueue
+        deactivate ImageQueue
+        Server-->>Client: 200 OK
+    end
+    deactivate Server

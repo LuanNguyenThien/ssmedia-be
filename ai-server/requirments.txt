@@ -9,6 +9,6 @@ sympy
 google-generativeai
 scikit-learn
 python-dotenv
-pytesseract 
-opencv-python 
+pytesseract
+opencv-python
 numpy

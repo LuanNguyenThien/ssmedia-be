@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant Client as User
+    participant Server as Controller
+    participant Cache as userCache
+    participant Queue as userQueue
+
+    Client->>Server: POST /notification
+    activate Server
+    Server->>Server: Validate request body with joiValidation(notificationSettingsSchema)
+    Server->>Cache: updateSingleUserItemInCache(userId, 'notifications', req.body)
+    Server->>Queue: addUserJob('updateNotificationSettings', { key: userId, value: req.body })
+    Server->>Client: HTTP 200 OK, { message: 'Notification settings updated successfully', settings: req.body }
+    deactivate Server

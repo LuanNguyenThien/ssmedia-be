@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant Client as User
+    participant Server as Controller
+    participant SocketIO as socketIOPostObject
+    participant Cache as postCache
+    participant Queue as postQueue
+
+    Client->>Server: POST /post
+    activate Server
+    Server->>Server: Validate request body with joiValidation(postSchema)
+    Server->>Server: Create postObjectId
+    Server->>Server: Create createdPost object
+    Server->>SocketIO: emit('add post', createdPost)
+    Server->>Cache: savePostToCache({ key: postObjectId, currentUserId, uId, createdPost })
+    Server->>Queue: addPostJob('addPostToDB', { key: req.currentUser!.userId, value: createdPost })
+    Server->>Queue: addPostJob('analyzePostContent', { value: createdPost })
+    Server->>Client: HTTP 201 Created, { message: 'Post created successfully' }
+    deactivate Server

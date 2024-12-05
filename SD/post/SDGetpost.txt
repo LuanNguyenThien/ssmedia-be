@@ -1,0 +1,48 @@
+sequenceDiagram
+    participant User as User
+    participant Server as Controller
+    participant PostCache as PostCache
+    participant PostService as PostService
+
+    User->>Server: GET /posts/:page
+    activate Server
+    Server->>Server: Extract page and userId
+    Server->>PostCache: getPostsforUserFromCache(redisKey, skip, limit)
+    activate PostCache
+    PostCache-->>Server: cachedPosts
+    deactivate PostCache
+
+    alt cachedPosts.length === limit
+        Server->>PostService: postsCount()
+        activate PostService
+        PostService-->>Server: totalPosts
+        deactivate PostService
+    else
+        Server->>PostCache: getTotalPostsforUser(redisKey)
+        activate PostCache
+        PostCache-->>Server: redisCount
+        deactivate PostCache
+
+        Server->>PostService: getPostsforUserByVector(userId, mongoSkip, mongoLimit)
+        activate PostService
+        PostService-->>Server: newPosts
+        deactivate PostService
+
+        Server->>PostCache: savePostsforUserToCache(redisKey, newPosts)
+        activate PostCache
+        PostCache-->>Server: 
+        deactivate PostCache
+
+        Server->>PostCache: getPostsforUserFromCache(redisKey, skip, limit)
+        activate PostCache
+        PostCache-->>Server: posts
+        deactivate PostCache
+
+        Server->>PostService: postsCount()
+        activate PostService
+        PostService-->>Server: totalPosts
+        deactivate PostService
+    end
+
+    Server-->>User: 200 OK, { message: 'All posts', posts, totalPosts }
+    deactivate Server

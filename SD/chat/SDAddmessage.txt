@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant User as User
+    participant Request as Request
+
+    participant UserCache as userCache
+    participant Uploads as uploads
+    participant Add as Add
+    participant MessageCache as messageCache
+    participant ChatQueue as chatQueue
+
+    User->>Request: Send message request
+    Request->>Request: Extract message details from req.body
+    Request->>UserCache: getUserFromCache(userId)
+    UserCache-->>Request: Return sender details
+    alt Image selected
+        Request->>Uploads: Upload selected image
+        Uploads-->>Request: Return image URL
+        alt Upload failed
+            Request->>Request: Throw BadRequestError
+        end
+    end
+    Request->>Request: Create messageData object
+    Request->>Add: emitSocketIOEvent(messageData)
+    alt Message not read
+        Request->>Add: messageNotification(details)
+    end
+    Request->>MessageCache: addChatListToCache(userId, receiverId, conversationObjectId)
+    Request->>MessageCache: addChatListToCache(receiverId, userId, conversationObjectId)
+    Request->>MessageCache: addChatMessageToCache(conversationObjectId, messageData)
+    Request->>ChatQueue: addChatJob('addChatMessageToDB', messageData)
+    Request->>User: Send response with status OK and conversationId

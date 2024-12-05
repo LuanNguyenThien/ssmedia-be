@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant User as User
+    participant Server as Controller
+    participant PythonServer as Python Server
+    participant PostService as PostService
+
+    User->>Server: HTTP GET /search/:query
+    activate Server
+    Server->>Server: Extract query from req.params
+    Server->>PythonServer: POST /vectorize { query: search }
+    activate PythonServer
+    PythonServer-->>Server: { vector: queryVector }
+    deactivate PythonServer
+    Server->>PostService: searchPostsByVector(queryVector)
+    activate PostService
+    PostService-->>Server: [posts]
+    deactivate PostService
+    Server-->>User: HTTP 200 OK { message: 'Posts found', posts }
+    deactivate Server
+
+    alt Error occurs
+        Server-->>User: HTTP 500 Internal Server Error { message: 'Error searching posts', error }
+    end

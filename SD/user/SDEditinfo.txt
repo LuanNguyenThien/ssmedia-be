@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant Client as User
+    participant Server as Controller
+    participant Cache as userCache
+    participant Queue as userQueue
+
+    Client->>Server: POST /edit/info
+    activate Server
+    Server->>Server: Validate request body with joiValidation(basicInfoSchema)
+    loop Update user cache
+        Server->>Cache: updateSingleUserItemInCache(userId, key, value)
+    end
+    Server->>Queue: addUserJob('updateBasicInfoInDB', { key: userId, value: req.body })
+    Server->>Client: HTTP 200 OK, { message: 'Updated successfully' }
+    deactivate Server

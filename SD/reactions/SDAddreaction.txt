@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant ReactionCache as reactionCache
+    participant ReactionQueue as reactionQueue
+
+    User->>Controller: POST /reaction
+    activate Controller
+    Controller->>Controller: Extract req.body
+    Controller->>Controller: Create reactionObject
+    Controller->>ReactionCache: savePostReactionToCache(postId, reactionObject, postReactions, type, previousReaction)
+    activate ReactionCache
+    ReactionCache-->>Controller: Cache saved
+    deactivate ReactionCache
+    Controller->>Controller: Create databaseReactionData
+    Controller->>ReactionQueue: addReactionJob('addReactionToDB', databaseReactionData)
+    activate ReactionQueue
+    ReactionQueue-->>Controller: Job added
+    deactivate ReactionQueue
+    Controller->>User: HTTP 200 OK, { message: 'Reaction added successfully' }
+    deactivate Controller

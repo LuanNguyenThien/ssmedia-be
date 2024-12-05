@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant MessageCache as messageCache
+    participant SocketIO as socketIOChatObject
+    participant ChatQueue as chatQueue
+
+    User->>Controller: markMessageAsDeleted(req, res)
+    activate Controller
+    Controller->>MessageCache: markMessageAsDeleted(senderId, receiverId, messageId, type)
+    activate MessageCache
+    MessageCache-->>Controller: updatedMessage
+    deactivate MessageCache
+    Controller->>SocketIO: emit('message read', updatedMessage)
+    Controller->>SocketIO: emit('chat list', updatedMessage)
+    Controller->>ChatQueue: addChatJob('markMessageAsDeletedInDB', { messageId, type })
+    Controller->>User: res.status(HTTP_STATUS.OK).json({ message: 'Message marked as deleted' })
+    deactivate Controller

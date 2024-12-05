@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant FollowerCache as FollowerCache
+    participant FollowerQueue as FollowerQueue
+
+    User->>Controller: HTTP Request (follower)
+    activate Controller
+    Controller->>FollowerCache: removeFollowerFromCache(`following:${req.currentUser!.userId}`, followeeId)
+    Controller->>FollowerCache: removeFollowerFromCache(`followers:${followeeId}`, followerId)
+    Controller->>FollowerCache: updateFollowersCountInCache(`${followeeId}`, 'followersCount', -1)
+    Controller->>FollowerCache: updateFollowersCountInCache(`${followerId}`, 'followingCount', -1)
+    FollowerCache-->>Controller: Cache updated
+    Controller->>FollowerQueue: addFollowerJob('removeFollowerFromDB', { keyOne: `${followeeId}`, keyTwo: `${followerId}` })
+    activate FollowerQueue
+    FollowerQueue-->>Controller: Job added
+    deactivate FollowerQueue
+    Controller-->>User: HTTP Response (200 OK, { message: 'Unfollowed user now' })
+    deactivate Controller

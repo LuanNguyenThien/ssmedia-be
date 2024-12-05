@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant FollowerCache as FollowerCache
+    participant UserCache as UserCache
+    participant SocketIO as SocketIOFollowerObject
+    participant FollowerQueue as FollowerQueue
+
+    User->>Controller: HTTP Request (followerId)
+    activate Controller
+    Controller->>FollowerCache: updateFollowersCountInCache(followerId, 'followersCount', 1)
+    Controller->>FollowerCache: updateFollowersCountInCache(req.currentUser!.userId, 'followingCount', 1)
+    Controller->>UserCache: getUserFromCache(followerId)
+    Controller->>UserCache: getUserFromCache(req.currentUser!.userId)
+    UserCache-->>Controller: cachedFollower
+    UserCache-->>Controller: cachedFollowee
+    Controller->>Controller: new ObjectId()
+    Controller->>Controller: Add.prototype.userData(cachedFollower)
+    Controller->>SocketIO: emit('add follower', addFolloweeData)
+    Controller->>FollowerCache: saveFollowerToCache(`following:${req.currentUser!.userId}`, followerId)
+    Controller->>FollowerCache: saveFollowerToCache(`followers:${followerId}`, req.currentUser!.userId)
+    Controller->>FollowerQueue: addFollowerJob('addFollowerToDB', { keyOne, keyTwo, username, followerDocumentId })
+    Controller-->>User: HTTP Response (200 OK, { message: 'Following user now' })
+    deactivate Controller

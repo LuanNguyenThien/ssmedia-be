@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant Client as User
+    participant Server as Controller
+    participant PostCache as postCache
+    participant SocketIO as socketIOPostObject
+    participant PostQueue as postQueue
+
+    Client->>Server: POST /posts/:postId
+    activate Server
+    Server->>PostCache: updatePostInCache(postId, updatedPost)
+    activate PostCache
+    PostCache-->>Server: postUpdated
+    deactivate PostCache
+    Server->>SocketIO: emit('update post', postUpdated, 'posts')
+    Server->>PostQueue: addPostJob('updatePostInDB', { key: postId, value: postUpdated })
+    deactivate Server
+    Server-->>Client: 200 OK { message: 'Post updated successfully' }

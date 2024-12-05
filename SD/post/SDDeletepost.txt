@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant Client as User
+    participant Server as Controller
+    participant SocketIO as socketIOPostObject
+    participant Cache as postCache
+    participant Queue as postQueue
+
+    Client->>Server: DELETE /post/:postId
+    activate Server
+    Server->>SocketIO: emit('delete post', req.params.postId)
+    Server->>Cache: deletePostFromCache(req.params.postId, req.currentUser!.userId)
+    Server->>Queue: addPostJob('deletePostFromDB', { keyOne: req.params.postId, keyTwo: req.currentUser!.userId })
+    Server->>Client: HTTP 200 OK, { message: 'Post deleted successfully' }
+    deactivate Server

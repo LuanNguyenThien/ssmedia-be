@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant Cache as postCache
+    participant Queue as favPostQueue
+
+    User->>Controller: favoritePost(req, res)
+    activate Controller
+    Controller->>Controller: Extract postId and userId
+    Controller->>Controller: Create favPostObjectId
+    Controller->>Controller: Create favPost object
+    Controller->>Cache: toggleFavoritePostInCache(userId, postId)
+    activate Cache
+    Cache-->>Controller: Cache updated
+    deactivate Cache
+    Controller->>Queue: addFavPostJob('addFavPostToDB', favPost)
+    activate Queue
+    Queue-->>Controller: Job added
+    deactivate Queue
+    Controller->>User: res.status(HTTP_STATUS.CREATED).json({ message: 'Post added to favorites successfully' })
+    deactivate Controller

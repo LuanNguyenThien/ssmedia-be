@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant User as User
+    participant Delete as Controller
+    participant Socket as socketIONotificationObject
+    participant Queue as notificationQueue
+
+    User->>Delete: HTTP Request (delete notification)
+    activate Delete
+    Delete->>Socket: emit('delete notification', notificationId)
+    activate Socket
+    deactivate Socket
+    Delete->>Queue: addNotificationJob('deleteNotification', { key: notificationId })
+    activate Queue
+    deactivate Queue
+    Delete-->>User: HTTP Response (200 OK, { message: 'Notification deleted successfully' })
+    deactivate Delete

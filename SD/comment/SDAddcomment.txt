@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant User as User
+    participant Controller as Controller
+    participant Cloudinary as CloudinaryService
+    participant Cache as CommentCache
+    participant Queue as CommentQueue
+    User->>Controller: POST /comment
+    activate Controller
+    alt selectedImage is not empty
+        Controller->>Cloudinary: uploads(selectedImage)
+        activate Cloudinary
+        Cloudinary-->>Controller: UploadApiResponse
+        deactivate Cloudinary
+        alt UploadApiResponse has no public_id
+            Controller-->>User: 400 BadRequestError
+        end
+    end
+    Controller->>Cache: savePostCommentToCache(postId, commentData)
+    activate Cache
+    Cache-->>Controller: Cache saved
+    deactivate Cache
+    Controller->>Queue: addCommentJob('addCommentToDB', databaseCommentData)
+    activate Queue
+    Queue-->>Controller: Job added
+    deactivate Queue
+    Controller-->>User: 200 OK, { message: 'Comment created successfully' }
+    deactivate Controller

@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant Client as User
+    participant Controller as Controller
+    participant Helpers as Helpers
+    participant UserCache as UserCache
+    participant UserService as UserService
+
+    Client->>Controller: HTTP Request (query)
+    Controller->>Helpers: escapeRegex(query)
+    Helpers-->>Controller: regex
+    Controller->>UserCache: searchUsersInCache(query)
+    UserCache-->>Controller: users
+    alt users.length === 0
+        Controller->>UserService: searchUsers(regex)
+        UserService-->>Controller: users
+    end
+    Controller-->>Client: HTTP Response (Search results, users)
