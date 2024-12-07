@@ -3,7 +3,7 @@ import { ChattyServer } from '@root/setupServer';
 import databaseConnection from '@root/setupDatabase';
 import { config } from '@root/config';
 import Logger from 'bunyan';
-import { redisService } from '@service/redis/redis.service';
+// import { redisService } from '@service/redis/redis.service';
 
 const log: Logger = config.createLogger('app');
 

@@ -4,6 +4,7 @@ import { Create } from '@post/controllers/create-post';
 import { Get } from '@post/controllers/get-posts';
 import { Delete } from '@post/controllers/delete-post';
 import { Update } from '@post/controllers/update-post';
+import { Search } from '@post/controllers/search-post';
 
 class PostRoutes {
   private router: Router;
@@ -13,9 +14,12 @@ class PostRoutes {
   }
 
   public routes(): Router {
+    this.router.get('/post/:postId', authMiddleware.checkAuthentication, Get.prototype.postById);
     this.router.get('/post/all/:page', authMiddleware.checkAuthentication, Get.prototype.posts);
     this.router.get('/post/images/:page', authMiddleware.checkAuthentication, Get.prototype.postsWithImages);
     this.router.get('/post/videos/:page', authMiddleware.checkAuthentication, Get.prototype.postsWithVideos);
+
+    this.router.get('/search/:query', authMiddleware.checkAuthentication, Search.prototype.searchPosts);
 
     this.router.post('/post', authMiddleware.checkAuthentication, Create.prototype.post);
     this.router.post('/post/image/post', authMiddleware.checkAuthentication, Create.prototype.postWithImage);

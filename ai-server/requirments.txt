@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+torch
+transformers
+pymongo
+underthesea
+langdetect
+sympy
+google-generativeai
+scikit-learn
+python-dotenv
+pytesseract 
+opencv-python 
+numpy

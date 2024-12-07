@@ -1,5 +1,5 @@
 import { BaseCache } from '@service/redis/base.cache';
-import { INotificationSettings, ISocialLinks, IUserDocument } from '@user/interfaces/user.interface';
+import { INotificationSettings, ISocialLinks, IUserDocument, ISearchUser } from '@user/interfaces/user.interface';
 import Logger from 'bunyan';
 import { indexOf, findIndex } from 'lodash';
 import { config } from '@root/config';
@@ -140,6 +140,37 @@ export class UserCache extends BaseCache {
         userReplies.push(reply);
       }
       return userReplies;
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async searchUsersInCache(query: string): Promise<ISearchUser[]> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+
+      const regex = new RegExp(query, 'i');
+      const keys = await this.client.ZRANGE('user', 0, -1);
+      const users: ISearchUser[] = [];
+
+      for (const key of keys) {
+        const user = await this.client.HGETALL(`users:${key}`);
+        if (regex.test(user.username)) {
+          const searchUser: ISearchUser = {
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+            avatarColor: user.avatarColor,
+            profilePicture: user.profilePicture
+          };
+          users.push(searchUser);
+        }
+      }
+
+      return users;
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');

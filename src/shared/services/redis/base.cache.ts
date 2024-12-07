@@ -1,20 +1,36 @@
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import Logger from 'bunyan';
 import { config } from '@root/config';
-import { redisService } from '@service/redis/redis.service';
+// import { redisService } from '@service/redis/redis.service';
 
-export type RedisClient = ReturnType<typeof createClient>;
+export type RedisClient = RedisClientType;
 
 export abstract class BaseCache {
+  private static clientInstance: RedisClient | null = null;
   client: RedisClient;
   log: Logger;
 
   constructor(cacheName: string) {
-    this.client = createClient({ url: config.REDIS_HOST });
+    console.log(cacheName);
+    // this.client = createClient({ url: config.REDIS_HOST });
+    this.client = BaseCache.getClient();
     // redisService.connect();
-    // this.client = redisService.getClient();
+    // this.client = redisService.getredisClient();
     this.log = config.createLogger(cacheName);
     this.cacheError();
+  }
+
+  private static getClient(): RedisClient {
+    if (!BaseCache.clientInstance) {
+      console.log('Creating new Redis client');
+      BaseCache.clientInstance = createClient({ url: config.REDIS_HOST });
+
+      // Kết nối Redis ngay khi khởi tạo
+      BaseCache.clientInstance.connect().catch((error) => {
+        console.error('Failed to connect to Redis:', error);
+      });
+    }
+    return BaseCache.clientInstance;
   }
 
   private cacheError(): void {

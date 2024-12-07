@@ -20,15 +20,41 @@ export interface IPostDocument extends Document {
   gifUrl?: string;
   privacy?: string;
   reactions?: IReactions;
+  analysis?: {
+    mainTopics?: string[];
+    educationalValue?: number;
+    relevance?: number;
+    appropriateness?: {
+      evaluation?: string;
+    };
+    keyConcepts?: string[];
+    learningOutcomes?: string[];
+    disciplines?: string[];
+    classification?: {
+      type?: string;
+      subject?: string;
+      agesuitable?: string;
+    }
+    engagementPotential?: number;
+    credibilityScore?: number;
+    improvementSuggestions?: string[];
+    relatedTopics?: string[];
+    contentTags?: string[];
+  };
+  vector?: any[]; // Store the vectorized data here
   createdAt?: Date;
+  score?: number;
+  favoritedBy?: string[];
 }
 
 export interface IGetPostsQuery {
-  _id?: ObjectId | string;
+  _id?: ObjectId | string | { $in: string[] };
   username?: string;
   imgId?: string;
   gifUrl?: string;
   videoId?: string;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export interface ISavePostToCache {

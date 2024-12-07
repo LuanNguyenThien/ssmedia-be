@@ -214,14 +214,23 @@ export class MessageCache extends BaseCache {
   }
 
   private async getChatUsersList(): Promise<IChatUsers[]> {
-    const chatUsersList: IChatUsers[] = [];
-    const chatUsers = await this.client.LRANGE('chatUsers', 0, -1);
-    for (const item of chatUsers) {
-      const chatUser: IChatUsers = Helpers.parseJson(item) as IChatUsers;
-      chatUsersList.push(chatUser);
+      const chatUsersList: IChatUsers[] = [];
+      try {
+        // Kiểm tra kết nối của client
+        if (!this.client.isOpen) {
+          await this.client.connect();
+        }
+  
+        const chatUsers = await this.client.LRANGE('chatUsers', 0, -1);
+        for (const item of chatUsers) {
+          const chatUser: IChatUsers = Helpers.parseJson(item) as IChatUsers;
+          chatUsersList.push(chatUser);
+        }
+      } catch (error) {
+        console.error('Error fetching chat users list:', error);
+      }
+      return chatUsersList;
     }
-    return chatUsersList;
-  }
 
   private async getMessage(senderId: string, receiverId: string, messageId: string): Promise<IGetMessageFromCache> {
     const userChatList: string[] = await this.client.LRANGE(`chatList:${senderId}`, 0, -1);

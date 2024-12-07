@@ -7,6 +7,16 @@ const commentSchema: Schema = new Schema({
   username: { type: String },
   avataColor: { type: String },
   profilePicture: { type: String },
+  reactions: {
+    like: { type: Number, default: 0 },
+    love: { type: Number, default: 0 },
+    happy: { type: Number, default: 0 },
+    wow: { type: Number, default: 0 },
+    sad: { type: Number, default: 0 },
+    angry: { type: Number, default: 0 }
+  },
+  selectedImage: { type: String, default: '' },
+  parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment', default: null },
   createdAt: { type: Date, default: Date.now() }
 });
 

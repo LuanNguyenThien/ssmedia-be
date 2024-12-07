@@ -2,7 +2,11 @@ import { DoneCallback, Job } from 'bull';
 import Logger from 'bunyan';
 import { config } from '@root/config';
 import { userService } from '@service/db/user.service';
+import axios from 'axios';
+import { UserModel } from '@user/models/user.schema';
+import { cache } from '@service/redis/cache';
 
+const postCache = cache.postCache;
 const log: Logger = config.createLogger('userWorker');
 
 class UserWorker {
@@ -22,6 +26,24 @@ class UserWorker {
     try {
       const { key, value } = job.data;
       await userService.updateUserInfo(key, value);
+
+      if (value.quote || value.school || value.work || value.location)  {
+        try {
+          const user = job.data.value;
+          const combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
+          const response = await axios.post('http://localhost:8000/vectorize', {
+            query: combinedText
+          });
+          const vectorizedData = response.data.vector;
+          await UserModel.updateOne(
+            { _id: key },
+            { $set: { user_vector: vectorizedData } }
+          );
+          await postCache.clearPersonalizedPostsCache(key);
+        } catch (error) {
+          log.error(`Error vectorizing data for user ${key}: ${(error as Error).message}`);
+        }
+      }
       job.progress(100);
       done(null, job.data);
     } catch (error) {

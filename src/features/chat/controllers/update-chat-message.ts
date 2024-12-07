@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
 import mongoose from 'mongoose';
-import { MessageCache } from '@service/redis/message.cache';
+// import { MessageCache } from '@service/redis/message.cache';
 import { IMessageData } from '@chat/interfaces/chat.interface';
 import { socketIOChatObject } from '@socket/chat';
 import { chatQueue } from '@service/queues/chat.queue';
 import { joiValidation } from '@global/decorators/joi-validation.decorators';
 import { markChatSchema } from '@chat/schemes/chat';
+import { cache } from '@service/redis/cache';
 
-const messageCache: MessageCache = new MessageCache();
+// const messageCache: MessageCache = new MessageCache();
+const messageCache = cache.messageCache;
 
 export class Update {
   @joiValidation(markChatSchema)

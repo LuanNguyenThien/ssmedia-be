@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
-import { UserCache } from '@service/redis/user.cache';
+// import { UserCache } from '@service/redis/user.cache';
 import { joiValidation } from '@global/decorators/joi-validation.decorators';
 import { addImageSchema } from '@image/schemes/images';
 import { uploads } from '@global/helpers/cloudinary-upload';
@@ -11,8 +11,10 @@ import { socketIOImageObject } from '@socket/image';
 import { imageQueue } from '@service/queues/image.queue';
 import { IBgUploadResponse } from '@image/interfaces/image.interface';
 import { Helpers } from '@global/helpers/helpers';
+import { cache } from '@service/redis/cache';
 
-const userCache: UserCache = new UserCache();
+// const userCache: UserCache = new UserCache();
+const userCache = cache.userCache;
 
 export class Add {
   @joiValidation(addImageSchema)
