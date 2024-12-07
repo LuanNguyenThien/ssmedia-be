@@ -114,8 +114,8 @@ class PostService {
           index: "vectorPost_index",
           path: "post_embedding",
           queryVector: queryVector,
-          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit + 25 : 20,
-          limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit : 8
+          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit + 50 : 100,
+          limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit : 10
         }
       } as any,
       {

@@ -6,6 +6,40 @@ from .utils import blacklist_categories, is_math_expression, is_meaningful_text,
 
 genai.configure(api_key=Config.API_KEY)
 
+async def clarify_text_for_vectorization(text):
+    try:
+        # Sử dụng Gemini để làm rõ ý nghĩa của văn bản
+        model = genai.GenerativeModel('gemini-pro')
+        prompt = f"""Please clarify the following text to ensure it is meaningful and semantically rich for vectorization purposes. 
+        The text might be short or unclear, so provide a more detailed and clear version, need the result in a paragraph focus on content of text and related keyword, topic by english:
+
+        Original Text: '{text}'"""
+
+        # prompt = f"""
+        # You are a semantic analysis assistant helping to optimize text for vectorization in a search and personalization system. 
+        # Please enhance the following text by:
+
+        # 1. Clarifying and expanding its meaning, especially if it is short or ambiguous.
+        # 2. Providing additional context, key terms, and related concepts to ensure the text is semantically rich and well-structured.
+        # 3. Structuring the response in a concise paragraph that maintains focus on the main idea and related topics.
+
+        # The goal is to maximize the text's informativeness and semantic richness for efficient data vectorization. The answer should be in English.
+
+        # Original Text: '{text}'
+        # """
+
+        response = model.generate_content(prompt)
+        
+        if response.prompt_feedback.block_reason:
+            print(f"Response blocked. Reason: {response.prompt_feedback.block_reason}")
+            return None
+        
+        return response.text
+    
+    except Exception as e:
+        print(f"Error in Gemini clarification: {str(e)}")
+        return None
+
 async def translate_to_english(text):
     try:
         # Sử dụng Gemini để dịch văn bản sang tiếng Anh
@@ -65,18 +99,18 @@ async def analyze_content_with_gemini(content, language):
 async def analyze_content(content, id):
     try:
         # Xác định loại nội dung
-        if is_math_expression(content):
-            content_type = "Mathematical Expression"
-            math_analysis = analyze_math_expression(content)
-            return {
-                "content_type": content_type,
-                "math_analysis": math_analysis,
-                "is_appropriate": True,
-                "educational_value": 10,
-                "main_topics": ["Mathematics"],
-                "key_concepts": [str(math_analysis["original"])]
-            }
-        elif not is_meaningful_text(content):
+        # if is_math_expression(content):
+        #     content_type = "Mathematical Expression"
+        #     math_analysis = analyze_math_expression(content)
+        #     return {
+        #         "content_type": content_type,
+        #         "math_analysis": math_analysis,
+        #         "is_appropriate": True,
+        #         "educational_value": 10,
+        #         "main_topics": ["Mathematics"],
+        #         "key_concepts": [str(math_analysis["original"])]
+        #     }
+        if not is_meaningful_text(content):
             content_type = "Special Characters/Numbers"
         else:
             content_type = "Text"
@@ -100,7 +134,7 @@ async def analyze_content(content, id):
         else:
             content_for_analysis = content
 
-        content_for_analysis = preprocess_text(content_for_analysis)
+        # content_for_analysis = preprocess_text(content_for_analysis)
 
         # Phân tích với Gemini
         gemini_analysis = await analyze_content_with_gemini(content_for_analysis, "English")
@@ -114,7 +148,8 @@ async def analyze_content(content, id):
             disciplines=cleaned_analysis.get("Related Academic Disciplines", []),
             range_age_suitable=cleaned_analysis["Content Classification"].get("Range Age Suitable", "N/A"), 
             related_topics=cleaned_analysis.get("Related Topics", []),
-            content_tags=cleaned_analysis.get("Content Tags", [])
+            content_tags=cleaned_analysis.get("Content Tags", []),
+            potential_outcomes=cleaned_analysis.get("Potential Learning Outcomes", [])
         )
         combined_result = preprocess_text(combined_result)
         print(f"Combined_result: {combined_result}")
@@ -130,7 +165,7 @@ async def analyze_content(content, id):
     
 async def vectorize_query(query):
     try:
-        query = await translate_to_english(query)
+        query = await clarify_text_for_vectorization(query)
         preprocessed_query = preprocess_text(query)
         vector = get_albert_embedding(preprocessed_query)
         return vector

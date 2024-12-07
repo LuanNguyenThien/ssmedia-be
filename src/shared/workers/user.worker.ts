@@ -27,10 +27,10 @@ class UserWorker {
       const { key, value } = job.data;
       await userService.updateUserInfo(key, value);
 
-      if (value.quote || value.school || value.work)  {
+      if (value.quote || value.school || value.work || value.location)  {
         try {
           const user = job.data.value;
-          const combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}.`;
+          const combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
           const response = await axios.post('http://localhost:8000/vectorize', {
             query: combinedText
           });

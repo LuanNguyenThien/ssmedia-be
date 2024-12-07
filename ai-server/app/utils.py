@@ -61,11 +61,13 @@ def preprocess_text(text):
     text = re.sub(r'[^\w\s]', '', text)
     return text
 
-def combine_text(main_topics, disciplines, key_concepts, range_age_suitable, related_topics, content_tags):
-    combined_text = f"Main Topics: {', '.join(main_topics)}. Discipline: {', '.join(disciplines)}. Key Concepts: {', '.join(key_concepts)}. Range Age Suitable: {range_age_suitable}. Related Topics: {', '.join(related_topics)}. Content Tags: {', '.join(content_tags)}."
+def combine_text(main_topics, disciplines, key_concepts, range_age_suitable, related_topics, content_tags, potential_outcomes):
+    combined_text = f"{', '.join(main_topics)}. {', '.join(content_tags)}. {', '.join(key_concepts)}. {', '.join(potential_outcomes)}. {', '.join(related_topics)}. {', '.join(disciplines)}. Age Suitable: {range_age_suitable}."
     return combined_text
 
 def is_math_expression(text):
+    if re.search(r'[^0-9+\-*/^().,\s|!%a-zA-Z]', text):
+        return False
     try:
         sympy.sympify(text)
         return True

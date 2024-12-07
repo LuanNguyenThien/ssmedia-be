@@ -28,6 +28,7 @@ class PostWorker {
 
       const educationalValue = analysisResult['Educational Value'];
       const relevanceToLearningCommunity = analysisResult['Relevance to Learning Community'];
+      const appropriateness = analysisResult['Content Appropriateness'];
 
       // Log các giá trị để kiểm tra
       console.log('Educational Value:', educationalValue);
@@ -38,7 +39,7 @@ class PostWorker {
         return;
       }
 
-      if (educationalValue < 3 || relevanceToLearningCommunity < 3) {
+      if ((educationalValue < 2 && relevanceToLearningCommunity < 2) || appropriateness === 'Not Appropriate') {
         // Xử lý khi nội dung không phù hợp
         const message = 'Bài viết của bạn vào lúc '+ value.createdAt+ ' có nội dung không phù hợp, vui lòng chỉnh sửa lại!';
         console.log(value.userId);
