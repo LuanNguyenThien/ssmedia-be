@@ -35,6 +35,7 @@
       "@image/*": ["src/features/images/*"],
       "@chat/*": ["src/features/chat/*"],
       "@global/*": ["src/shared/globals/*"],
+      "@api-serverAI/*": ["src/shared/services/api-serverAI/*"],
       "@service/*": ["src/shared/services/*"],
       "@socket/*": ["src/shared/sockets/*"],
       "@worker/*": ["src/shared/workers/*"],

@@ -3,7 +3,7 @@ import Logger from 'bunyan';
 import { config } from '@root/config';
 import { postService } from '@service/db/post.service';
 import { socketIONotificationObject } from '@socket/notification';
-import axios from 'axios';
+import { postServiceAI } from '@api-serverAI/post/post.AIservice';
 import { Update } from '@post/controllers/update-post';
 import { IPostDocument } from '@post/interfaces/post.interface';
 import { cache } from '@service/redis/cache';
@@ -20,8 +20,8 @@ class PostWorker {
     const { value } = job.data;
 
     try {
-      const response = await axios.post('http://localhost:8000/analyze', { value });
-      const analysisResult = JSON.parse(response.data);
+      const response = await postServiceAI.analyzePostContent(value);
+      const analysisResult = JSON.parse(response);
 
       job.progress(100);
       done(null, job.data);

@@ -3,7 +3,7 @@ import HTTP_STATUS from 'http-status-codes';
 import { IPostDocument } from '@post/interfaces/post.interface';
 import { postService } from '@service/db/post.service';
 import { cache } from '@service/redis/cache';
-import axios from 'axios';
+import { textServiceAI } from '@api-serverAI/text/text.AIservice';
 
 const postCache = cache.postCache;
 const PAGE_SIZE = 10;
@@ -14,8 +14,8 @@ export class Search {
     console.log(search);
     try {
         // Gửi truy vấn đến server Python để vector hóa
-        const response = await axios.post('http://localhost:8000/vectorize', { query: search });
-        const queryVector = response.data.vector;
+        const response = await textServiceAI.vectorizeText(search);
+        const queryVector = response.vector;
   
         // Thực hiện tìm kiếm trong MongoDB sử dụng vector
         const posts: IPostDocument[] = await postService.searchPostsByVector(queryVector);
