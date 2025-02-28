@@ -1,4 +1,3 @@
-import os
 import re
 import torch
 import sympy
@@ -7,8 +6,6 @@ from transformers import pipeline, AutoTokenizer, AutoModel, AlbertTokenizer, Al
 from pymongo import MongoClient
 from bson import ObjectId
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 db_name = "test"
 collection_name = "Post"
@@ -114,4 +111,3 @@ def store_vector_in_mongodb(collection, post_embedding, id):
         {"_id": object_id},
         {"$set": {"post_embedding": post_embedding}}
     )
-    print("Document updated with vector data.")

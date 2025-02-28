@@ -1,15 +1,14 @@
 import re, json, traceback
 from app.config import Config
 import google.generativeai as genai
-from langdetect import detect, LangDetectException
-from .utils import blacklist_categories, is_math_expression, is_meaningful_text, analyze_math_expression, preprocess_text, combine_text, get_albert_embedding, store_vector_in_mongodb, collection
+from .utils import blacklist_categories, is_meaningful_text, preprocess_text, combine_text, get_albert_embedding, store_vector_in_mongodb, collection
 
 genai.configure(api_key=Config.API_KEY)
 
 async def clarify_text_for_vectorization(text):
     try:
         # Sử dụng Gemini để làm rõ ý nghĩa của văn bản
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
         prompt = f"""You are an assistant specializing in analyzing and extracting concise key topics or noun phrases for semantic search and vectorization. Your primary goal is to identify the core intent of the input text and extract relevant keywords or concepts, prioritizing domain-specific knowledge before any secondary aspects (e.g., study skills or strategies). The output must always be clean, concise, and in English, regardless of the input language.
 
         Key Instructions:
@@ -94,7 +93,7 @@ async def clarify_text_for_vectorization(text):
 async def translate_to_english(text):
     try:
         # Sử dụng Gemini để dịch văn bản sang tiếng Anh
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
         prompt = f"Dịch câu sau sang tiếng Anh giúp tôi, đang cần để vector hóa dữ liệu: '{text}'"
         response = model.generate_content(prompt)
     
@@ -110,29 +109,60 @@ async def translate_to_english(text):
 
 async def analyze_content_with_gemini(content, language):
     try:
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        # prompt = f"""Analyze the following content by english for a learning-focused social network:
+
+        # Content: "{content}"
+        # Language: {language}
+
+        # Please provide a comprehensive analysis covering the following aspects:
+        # 1. Main Topics (Array[MainTopics])
+        # 2. Educational Value (or Something ralated to Discover, Research around the world score 1-10)
+        # 3. Relevance to Learning Community (score 1-10)
+        # 4. Content Appropriateness: Evaluate if the content is appropriate or not for a learning community (evaluation: "Appropriate" or "Not Appropriate"). Consider factors like content's value, tone, and subject matter. Pay special attention to any content that might fall into the following inappropriate categories:
+        # {', '.join(blacklist_categories)}
+        # 5. Key Concepts (Array[Concepts])
+        # 6. Potential Learning Outcomes
+        # 7. Related Academic Disciplines (Array[Disciplines])
+        # 8. Content Classification (Type:? , Subject:?, Range Age Suitable:?)
+        # 9. Engagement Potential (score 1-100)
+        # 10. Credibility and Sources (score 1-10)
+        # 11. Improvement Suggestions
+        # 12. Related Topics (Array[Topics])
+        # 13. Content Tags (Array[Tags])
+
+        # Format your response as a JSON object with these keys."""
         prompt = f"""Analyze the following content for a learning-focused social network:
 
         Content: "{content}"
         Language: {language}
 
-        Please provide a comprehensive analysis covering the following aspects:
-        1. Main Topics (Array[MainTopics])
-        2. Educational Value (or Something ralated to Discover, Research around the world score 1-10)
-        3. Relevance to Learning Community (score 1-10)
-        4. Content Appropriateness: Evaluate if the content is appropriate or not for a learning community (evaluation: "Appropriate" or "Not Appropriate"). Consider factors like language, tone, and subject matter. Pay special attention to any content that might fall into the following inappropriate categories:
-        {', '.join(blacklist_categories)}
-        5. Key Concepts (Array[Concepts])
-        6. Potential Learning Outcomes
-        7. Related Academic Disciplines (Array[Disciplines])
-        8. Content Classification (Type:? , Subject:?, Range Age Suitable:?)
-        9. Engagement Potential (score 1-100)
-        10. Credibility and Sources (score 1-10)
-        11. Improvement Suggestions
-        12. Related Topics (Array[Topics])
-        13. Content Tags (Array[Tags])
+        Your task is to provide a structured analysis of the content, focusing on its educational relevance and appropriateness for a learning community.
+        Please return your analysis in JSON format, strictly adhering to the keys defined below. Do not include any introductory or concluding sentences outside of the JSON structure.
 
-        Format your response as a JSON object with these keys."""
+        Analysis should cover the following aspects, and be formatted as a JSON object with these keys:
+        
+        1. Main Topics (List of Main Topics identified in the content)
+        2. Educational Value (Score assessing educational value (1-10, higher is better))
+        3. Relevance to Learning Community (Score assessing relevance (1-10, higher is better))
+        4. Content Appropriateness: Evaluate if the content is appropriate for a learning community. Value MUST be either 'Appropriate' or 'Not Appropriate'.  
+        Consider content value, tone, subject matter, and explicitly check for the following inappropriate categories: {', '.join(blacklist_categories)}
+        5. Key Concepts (List of Key Concepts)
+        6. Potential Learning Outcomes(List of Potential Learning Outcomes)
+        7. Related Academic Disciplines (List of Related Disciplines)
+        8. Content Classification (
+            Type: Content Type (e.g., Article, Video, Question, Tutorial), 
+            Subject: Subject Matter, 
+            Range Age Suitable: Age range suitable (e.g., '13-18 years', 'Adults', 'All Ages', or 'N/A')
+        )
+        9. Engagement Potential (Score estimating engagement potential (1-100, higher is better))
+        10. Credibility and Sources (Score assessing credibility (1-10, higher is better))
+        11. Improvement Suggestions (Suggestions for improvement)
+        12. Related Topics (List of Related Topics)
+        13. Content Tags (List of Tags)
+
+        Ensure that your ENTIRE response is a valid JSON object.
+        """
 
         response = model.generate_content(prompt)
         print("Gemini: ", response.text)
@@ -149,63 +179,52 @@ async def analyze_content_with_gemini(content, language):
 
 async def analyze_content(content, id):
     try:
-        # Xác định loại nội dung
-        # if is_math_expression(content):
-        #     content_type = "Mathematical Expression"
-        #     math_analysis = analyze_math_expression(content)
-        #     return {
-        #         "content_type": content_type,
-        #         "math_analysis": math_analysis,
-        #         "is_appropriate": True,
-        #         "educational_value": 10,
-        #         "main_topics": ["Mathematics"],
-        #         "key_concepts": [str(math_analysis["original"])]
-        #     }
         if not is_meaningful_text(content):
             content_type = "Special Characters/Numbers"
         else:
             content_type = "Text"
         
         # Phát hiện ngôn ngữ (chỉ cho nội dung văn bản)
-        try:
-            language = detect(content) if content_type == "Text" else "N/A"
-        except LangDetectException:
-            language = "Unknown"
+        # try:
+        #     language = detect(content) if content_type == "Text" else "N/A"
+        # except LangDetectException:
+        #     language = "Unknown"
 
         print(f"Content type: {content_type}")
-        print(f"Detected language: {language}")
+        # print(f"Detected language: {language}")
 
         # Dịch sang tiếng Anh nếu cần
-        if language != 'en' and language != "Unknown":
-            translated_content = await translate_to_english(content)
-            if translated_content:
-                content_for_analysis = translated_content
-            else:
-                content_for_analysis = content  # Sử dụng nội dung gốc nếu dịch thất bại
-        else:
-            content_for_analysis = content
+        # if language != 'en' and language != "Unknown":
+        #     translated_content = await translate_to_english(content)
+        #     if translated_content:
+        #         content_for_analysis = translated_content
+        #     else:
+        #         content_for_analysis = content  # Sử dụng nội dung gốc nếu dịch thất bại
+        # else:
+        #     content_for_analysis = content
 
         # content_for_analysis = preprocess_text(content_for_analysis)
 
         # Phân tích với Gemini
-        gemini_analysis = await analyze_content_with_gemini(content_for_analysis, "English")
+        gemini_analysis = await analyze_content_with_gemini(content, "English")
         cleaned_analysis_str = re.sub(r'```json|```', '', gemini_analysis).strip()
 
         cleaned_analysis = json.loads(cleaned_analysis_str)
 
-        combined_result = combine_text(
-            main_topics=cleaned_analysis.get("Main Topics", []),
-            key_concepts=cleaned_analysis.get("Key Concepts", []),
-            disciplines=cleaned_analysis.get("Related Academic Disciplines", []),
-            range_age_suitable=cleaned_analysis["Content Classification"].get("Range Age Suitable", "N/A"), 
-            related_topics=cleaned_analysis.get("Related Topics", []),
-            content_tags=cleaned_analysis.get("Content Tags", []),
-            potential_outcomes=cleaned_analysis.get("Potential Learning Outcomes", [])
-        )
-        combined_result = preprocess_text(combined_result)
-        print(f"Combined_result: {combined_result}")
-        vector = get_albert_embedding(combined_result).tolist()
-        store_vector_in_mongodb(collection, vector, id)
+        if(cleaned_analysis.get("Content Appropriateness") != "Not Appropriate"):
+            combined_result = combine_text(
+                main_topics=cleaned_analysis.get("Main Topics", []),
+                key_concepts=cleaned_analysis.get("Key Concepts", []),
+                disciplines=cleaned_analysis.get("Related Academic Disciplines", []),
+                range_age_suitable=cleaned_analysis["Content Classification"].get("Range Age Suitable", "N/A"), 
+                related_topics=cleaned_analysis.get("Related Topics", []),
+                content_tags=cleaned_analysis.get("Content Tags", []),
+                potential_outcomes=cleaned_analysis.get("Potential Learning Outcomes", [])
+            )
+            combined_result = preprocess_text(combined_result)
+            print(f"Combined_result: {combined_result}")
+            vector = get_albert_embedding(combined_result).tolist()
+            store_vector_in_mongodb(collection, vector, id)
 
         return cleaned_analysis_str
 

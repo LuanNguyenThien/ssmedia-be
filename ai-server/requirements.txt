@@ -3,12 +3,9 @@ uvicorn
 torch
 transformers
 pymongo
-underthesea
-langdetect
 sympy
 google-generativeai
 scikit-learn
 python-dotenv
-pytesseract 
-opencv-python 
-numpy
+opencv-python
+sentencepiece==0.1.99 
