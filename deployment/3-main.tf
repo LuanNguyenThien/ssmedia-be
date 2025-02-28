@@ -1,9 +1,9 @@
 terraform {
   backend "s3" {
-    bucket  = "" # Your unique AWS S3 bucket
+    bucket  = "brainet-terraform-state" # Your unique AWS S3 bucket
     # create a sub-folder called develop
-    key     = "develop/chatapp.tfstate"
-    region  = "" # Your AWS region
+    key     = "develop/younghub.tfstate"
+    region  = var.aws_region # Your AWS region
     encrypt = true
   }
 }
@@ -15,6 +15,6 @@ locals {
     Environment = terraform.workspace
     Project     = var.project
     ManagedBy   = "Terraform"
-    Owner       = "" # Your fullname
+    Owner       = "Luan Nguyen" # Your fullname
   }
 }

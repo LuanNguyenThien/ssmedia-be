@@ -4,6 +4,7 @@ resource "aws_elasticache_subnet_group" "elasticache_subnet_group" {
 }
 
 resource "aws_elasticache_replication_group" "chatapp_redis_cluster" {
+  description = "Redis cluster for chatapp"
   automatic_failover_enabled    = true
   replication_group_id          = "${local.prefix}-redis"
   node_type                     = var.elasticache_node_type
