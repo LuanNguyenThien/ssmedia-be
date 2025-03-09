@@ -6,7 +6,7 @@ export let BASE_ENDPOINT = '';
 if (config.NODE_ENV === 'development') {
   BASE_ENDPOINT = 'http://localhost:8000';
 } else if (config.NODE_ENV === 'production') {
-  BASE_ENDPOINT = 'https://ai-server:8000';
+  BASE_ENDPOINT = 'http://ai-server:8000';
 } else if (config.NODE_ENV === 'staging') {
   BASE_ENDPOINT = 'https://api.stg.<your-backend-domain>';
 } else if (config.NODE_ENV === 'production') {

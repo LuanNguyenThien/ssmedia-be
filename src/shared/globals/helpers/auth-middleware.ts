@@ -6,12 +6,19 @@ import { AuthPayload } from '@auth/interfaces/auth.interface';
 
 export class AuthMiddleware {
   public verifyUser(req: Request, _res: Response, next: NextFunction): void {
-    if (!req.session?.jwt) {
+    let token = req.session?.jwt;
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+    if (!token) {
       throw new NotAuthorizedError('Token is not available. Please login again.');
     }
 
     try {
-      const payload: AuthPayload = JWT.verify(req.session?.jwt, config.JWT_TOKEN!) as AuthPayload;
+      const payload: AuthPayload = JWT.verify(token, config.JWT_TOKEN!) as AuthPayload;
       req.currentUser = payload;
     } catch (error) {
       throw new NotAuthorizedError('Token is invalid. Please login again.');
