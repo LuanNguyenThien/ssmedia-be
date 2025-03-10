@@ -48,8 +48,9 @@ export class ChattyServer {
         name: 'session',
         keys: [config.SECRET_KEY_ONE!, config.SECRET_KEY_TWO!],
         maxAge: 24 * 7 * 3600000,
-        secure: config.NODE_ENV !== 'development'
-        // sameSite: 'none' // comment this line when running the server locally
+        secure: config.NODE_ENV !== 'development',
+        sameSite: 'none', // comment this line when running the server locally
+        domain: '.younghub.online'
       })
     );
     app.use(hpp());
@@ -114,7 +115,8 @@ export class ChattyServer {
     const io: Server = new Server(httpServer, {
       cors: {
         origin: config.CLIENT_URL,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        credentials: true
       }
     });
     const pubClient = createClient({ url: config.REDIS_HOST });
