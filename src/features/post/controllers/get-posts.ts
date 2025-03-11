@@ -68,7 +68,7 @@ export class Get {
         totalPosts = redisCount;
       } else {
         const formattedPosts = newPosts
-          .map(post => ({ _id: post._id!.toString(), score: post.score as number }));
+          .map(post => ({ _id: post._id as string, score: post.score as number }));
         await postCache.savePostsforUserToCache(redisKey, formattedPosts);
 
         posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
