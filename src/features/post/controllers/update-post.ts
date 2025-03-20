@@ -25,9 +25,10 @@ export class Update {
 
   @joiValidation(postSchema)
   public async posts(req: Request, res: Response): Promise<void> {
-    const { post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
+    const { htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
     const { postId } = req.params;
     const updatedPost: IPostDocument = {
+      htmlPost,
       post,
       bgColor,
       privacy,

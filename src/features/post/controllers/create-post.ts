@@ -19,7 +19,7 @@ const postCache = cache.postCache;
 export class Create {
   @joiValidation(postSchema)
   public async post(req: Request, res: Response): Promise<void> {
-    const { post, bgColor, privacy, gifUrl, profilePicture, feelings } = req.body;
+    const { post, bgColor, privacy, gifUrl, profilePicture, feelings, htmlPost } = req.body;
     const postObjectId: ObjectId = new ObjectId();
     const createdPost: IPostDocument = {
       _id: postObjectId,
@@ -29,6 +29,7 @@ export class Create {
       avatarColor: req.currentUser!.avatarColor,
       profilePicture,
       post,
+      htmlPost,
       bgColor,
       feelings,
       privacy,
@@ -39,7 +40,7 @@ export class Create {
       videoId: '',
       videoVersion: '',
       createdAt: new Date(),
-      reactions: { like: 0, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
+      reactions: { upvote: 0, downvote: 0 }
     } as IPostDocument;
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({
@@ -81,7 +82,7 @@ export class Create {
       videoId: '',
       videoVersion: '',
       createdAt: new Date(),
-      reactions: { like: 0, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
+      reactions: { upvote: 0, downvote: 0 }
     } as IPostDocument;
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({
@@ -127,7 +128,7 @@ export class Create {
       videoId: result.public_id,
       videoVersion: result.version.toString(),
       createdAt: new Date(),
-      reactions: { like: 0, love: 0, happy: 0, sad: 0, wow: 0, angry: 0 }
+      reactions: { upvote: 0, downvote: 0 }
     } as IPostDocument;
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({

@@ -10,6 +10,7 @@ export interface IPostDocument extends Document {
   avatarColor: string;
   profilePicture: string;
   post: string;
+  htmlPost?: string;
   bgColor: string;
   commentsCount: number;
   imgVersion?: string;
