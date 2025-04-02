@@ -194,7 +194,31 @@ class ChatService {
 
   public async updateMessageReaction(messageId: ObjectId, senderName: string, reaction: string, type: 'add' | 'remove'): Promise<void> {
     if (type === 'add') {
-      await MessageModel.updateOne({ _id: messageId }, { $push: { reaction: { senderName, type: reaction } } }).exec();
+      await MessageModel.updateOne(
+        { _id: messageId },
+        [
+          {
+            $set: {
+              reaction: {
+                $filter: {
+                  input: '$reaction',
+                  cond: { $ne: ['$$this.senderName', senderName] } // Xóa reaction cũ của senderName
+                }
+              }
+            }
+          },
+          {
+            $set: {
+              reaction: {
+                $concatArrays: [
+                  '$reaction',
+                  type === 'add' ? [{ senderName, type: reaction }] : [] // Thêm reaction mới nếu type là 'add'
+                ]
+              }
+            }
+          }
+        ]
+      ).exec();
     } else {
       await MessageModel.updateOne({ _id: messageId }, { $pull: { reaction: { senderName } } }).exec();
     }
