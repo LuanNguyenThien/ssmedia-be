@@ -6,13 +6,16 @@ export interface IMessageDocument extends Document {
   _id: mongoose.Types.ObjectId;
   conversationId: mongoose.Types.ObjectId;
   senderId: mongoose.Types.ObjectId;
-  receiverId: mongoose.Types.ObjectId;
+  receiverId?: mongoose.Types.ObjectId;
   senderUsername: string;
   senderAvatarColor: string;
   senderProfilePicture: string;
-  receiverUsername: string;
-  receiverAvatarColor: string;
-  receiverProfilePicture: string;
+  receiverUsername?: string;
+  receiverAvatarColor?: string;
+  receiverProfilePicture?: string;
+  isGroupChat: boolean;
+  groupId?: string;
+  groupName?: string;
   body: string;
   gifUrl: string;
   isRead: boolean;
@@ -25,15 +28,19 @@ export interface IMessageDocument extends Document {
 
 export interface IMessageData {
   _id: string | mongoose.Types.ObjectId;
-  conversationId: mongoose.Types.ObjectId;
-  receiverId: string;
-  receiverUsername: string;
-  receiverAvatarColor: string;
-  receiverProfilePicture: string;
+  conversationId?: mongoose.Types.ObjectId;
+  receiverId?: string;
+  receiverUsername?: string;
+  receiverAvatarColor?: string;
+  receiverProfilePicture?: string;
   senderUsername: string;
   senderId: string;
   senderAvatarColor: string;
   senderProfilePicture: string;
+  isGroupChat?: boolean;
+  groupId?: string | mongoose.Types.ObjectId;
+  groupName?: string;
+  groupImage?: string;
   body: string;
   isRead: boolean;
   gifUrl: string;
@@ -58,8 +65,10 @@ export interface IChatUsers {
 }
 
 export interface IChatList {
-  receiverId: string;
-  conversationId: string;
+  receiverId?: string;
+  conversationId?: string;
+  groupId?: string;
+  type: string;
 }
 
 export interface ITyping {
@@ -81,6 +90,7 @@ export interface ISenderReceiver {
   receiverId: string;
   senderName: string;
   receiverName: string;
+  roomId: string;
 }
 
 export interface IGetMessageFromCache {

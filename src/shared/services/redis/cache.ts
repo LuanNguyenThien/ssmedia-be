@@ -4,6 +4,7 @@ import { PostCache } from "./post.cache";
 import { FollowerCache } from "./follower.cache";
 import { CommentCache } from "./comment.cache";
 import { ReactionCache } from "./reaction.cache";
+import { GroupMessageCache } from "./group-message.cache";
 
 
 class Cache {
@@ -14,6 +15,7 @@ class Cache {
     public followerCache: FollowerCache;
     public commentCache: CommentCache;
     public reactionCache: ReactionCache;
+    public groupMessageCache: GroupMessageCache;
   
     private constructor() {
       this.userCache = new UserCache();
@@ -22,11 +24,11 @@ class Cache {
       this.followerCache = new FollowerCache();
       this.commentCache = new CommentCache();
       this.reactionCache = new ReactionCache();
+      this.groupMessageCache = new GroupMessageCache();
     }
   
     public static getInstance(): Cache {
       if (!Cache.instance) {
-        console.log("1 2 3 hello")
         Cache.instance = new Cache();
       }
       return Cache.instance;
