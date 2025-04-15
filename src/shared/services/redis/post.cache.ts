@@ -63,6 +63,29 @@ export class PostCache extends BaseCache {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
+      // const keys = await this.client.keys('posts:*');
+      // for (const key of keys) {
+      //   const reactions = await this.client.hGet(key, 'reactions'); // Lấy trường "reactions"
+      //   if (reactions) {
+      //     const parsedReactions = JSON.parse(reactions);
+  
+      //     // Tính toán giá trị upvote và downvote
+      //     const upvote = (parsedReactions.like || 0) +
+      //                    (parsedReactions.love || 0) +
+      //                    (parsedReactions.happy || 0) +
+      //                    (parsedReactions.wow || 0);
+      //     const downvote = (parsedReactions.sad || 0) +
+      //                      (parsedReactions.angry || 0);
+  
+      //     // Cập nhật lại "reactions"
+      //     const updatedReactions = {
+      //       upvote: upvote,
+      //       downvote: downvote,
+      //     };
+      //     await this.client.hSet(key, 'reactions', JSON.stringify(updatedReactions));
+      //   }
+      // }
+
       const postIdsWithScores = await this.client.lRange(key, skip, skip + limit - 1);
       const multi = this.client.multi();
       for (const postIdWithScore of postIdsWithScores) {
@@ -140,7 +163,7 @@ export class PostCache extends BaseCache {
       }
       const serializedPosts = posts.map(post => JSON.stringify({ _id: post._id, score: post.score }));
       await this.client.rPush(key, serializedPosts);
-      await this.client.expire(key, 1800); // Đặt TTL là 30 phút (1800 giây)
+      await this.client.expire(key, 300); // Đặt TTL là 5 phút (300 giây)
     } catch (error) {
       log.error("Lỗi ở đây", error, key, posts);
       throw new ServerError('Server error. Try again.');
@@ -157,6 +180,7 @@ export class PostCache extends BaseCache {
       avatarColor,
       profilePicture,
       post,
+      htmlPost,
       bgColor,
       feelings,
       privacy,
@@ -178,6 +202,7 @@ export class PostCache extends BaseCache {
       'avatarColor': `${avatarColor}`,
       'profilePicture': `${profilePicture}`,
       'post': `${post}`,
+      'htmlPost': `${htmlPost}`,
       'bgColor': `${bgColor}`,
       'feelings': `${feelings}`,
       'privacy': `${privacy}`,
@@ -438,8 +463,9 @@ export class PostCache extends BaseCache {
   }
 
   public async updatePostInCache(key: string, updatedPost: IPostDocument): Promise<IPostDocument> {
-    const { post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, videoId, videoVersion, profilePicture } = updatedPost;
+    const { htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, videoId, videoVersion, profilePicture } = updatedPost;
     const dataToSave = {
+      'htmlPost': `${htmlPost}`,
       'post': `${post}`,
       'bgColor': `${bgColor}`,
       'feelings': `${feelings}`,

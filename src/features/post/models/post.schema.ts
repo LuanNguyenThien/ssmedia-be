@@ -8,6 +8,7 @@ const postSchema: Schema = new Schema({
   avatarColor: { type: String },
   profilePicture: { type: String },
   post: { type: String, default: '' },
+  htmlPost: { type: String, default: '' },
   bgColor: { type: String, default: '' },
   imgVersion: { type: String, default: '' },
   imgId: { type: String, default: '' },
@@ -18,12 +19,8 @@ const postSchema: Schema = new Schema({
   privacy: { type: String, default: '' },
   commentsCount: { type: Number, default: 0 },
   reactions: {
-    like: { type: Number, default: 0 },
-    love: { type: Number, default: 0 },
-    happy: { type: Number, default: 0 },
-    wow: { type: Number, default: 0 },
-    sad: { type: Number, default: 0 },
-    angry: { type: Number, default: 0 }
+    upvote: { type: Number, default: 0 },
+    downvote: { type: Number, default: 0 }
   },
   favoritedBy: { type: [String], default: [] },
   analysis: {
