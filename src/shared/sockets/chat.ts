@@ -15,11 +15,11 @@ export class SocketIOChatHandler {
   public listen(): void {
     this.io.on('connection', (socket: Socket) => {
       socket.on('join room', (users: ISenderReceiver) => {
-        const { senderName, receiverName } = users;
-        const senderSocketId: string = connectedUsersMap.get(senderName) as string;
-        const receiverSocketId: string = connectedUsersMap.get(receiverName) as string;
-        socket.join(senderSocketId);
-        socket.join(receiverSocketId);
+        const { roomId } = users;
+        // const senderSocketId: string = connectedUsersMap.get(senderId) as string;
+        // const receiverSocketId: string = connectedUsersMap.get(receiverId) as string;
+        socket.join(roomId);
+        // socket.join(receiverSocketId);
       });
     });
   }

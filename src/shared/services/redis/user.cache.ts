@@ -151,25 +151,35 @@ export class UserCache extends BaseCache {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-
+  
       const regex = new RegExp(query, 'i');
       const keys = await this.client.ZRANGE('user', 0, -1);
       const users: ISearchUser[] = [];
-
+  
+      // Tạo multi để nhóm các lệnh
+      const multi = this.client.multi();
       for (const key of keys) {
-        const user = await this.client.HGETALL(`users:${key}`);
+        multi.HGETALL(`users:${key}`);
+      }
+  
+      // Thực thi tất cả lệnh trong multi
+      const results = await multi.exec();
+  
+      // Xử lý kết quả
+      for (const result of results) {
+        const user = result as any; // Kết quả từ HGETALL
         if (regex.test(user.username)) {
           const searchUser: ISearchUser = {
             _id: user._id,
             username: user.username,
             email: user.email,
             avatarColor: user.avatarColor,
-            profilePicture: user.profilePicture
+            profilePicture: Helpers.parseJson(user.profilePicture),
           };
           users.push(searchUser);
         }
       }
-
+  
       return users;
     } catch (error) {
       log.error(error);
