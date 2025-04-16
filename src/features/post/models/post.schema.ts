@@ -35,7 +35,7 @@ const postSchema: Schema = new Schema({
     keyConcepts: [String],
     learningOutcomes: [String],
     disciplines: [String],
-    classification: { 
+    classification: {
       type: { type: String },
       subject: { type: String },
       agesuitable: { type: String }
@@ -47,7 +47,11 @@ const postSchema: Schema = new Schema({
     contentTags: [String]
   },
   vector: { type: Array, default: [] }, // Store the vectorized data here
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  isHidden: {
+    type: Boolean,
+    default: false
+  }
 });
 
 const PostModel: Model<IPostDocument> = model<IPostDocument>('Post', postSchema, 'Post');

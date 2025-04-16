@@ -5,6 +5,7 @@ import { FollowerCache } from '@service/redis/follower.cache';
 // import { UserCache } from '@service/redis/user.cache';
 import { IAllUsers, IUserDocument } from '@user/interfaces/user.interface';
 import { userService } from '@service/db/user.service';
+import { userBanService } from '@service/db/ban-user.service';
 
 const PAGE_SIZE = 5;
 export class getUser {
@@ -28,5 +29,21 @@ export class getUser {
     // const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
     const existingUser: IUserDocument = await userService.getUserById(userId);
     res.status(HTTP_STATUS.OK).json({ message: 'Get user detail', user: existingUser });
+  }
+
+  public async getBannedUsers(req: Request, res: Response): Promise<void> {
+    try {
+      const bannedUsers = await userBanService.getBannedUsers();
+
+      if (bannedUsers.length === 0) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'No banned users found' });
+        return;
+      }
+
+      res.status(HTTP_STATUS.OK).json({ message: 'Banned users retrieved successfully', data: bannedUsers });
+    } catch (error) {
+      console.error('Error fetching banned users:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to retrieve banned users' });
+    }
   }
 }

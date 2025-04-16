@@ -65,7 +65,7 @@ class PostService {
     const user: IUserDocument | null = await UserModel.findById(userId);
     if (!user) {
       return [];
-    }else {
+    } else {
       const userVector: number[] = user.user_vector as number[];
       console.log(userVector);
       if (userVector !== undefined && userVector.length === 0) {
@@ -107,8 +107,8 @@ class PostService {
     const pipeline: any[] = [
       {
         $vectorSearch: {
-          index: "vectorPost_index",
-          path: "post_embedding",
+          index: 'vectorPost_index',
+          path: 'post_embedding',
           queryVector: queryVector,
           numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? mongoSkip + mongoLimit + 25 : 20,
           limit: mongoSkip !== undefined && mongoLimit !== undefined ? mongoSkip + mongoLimit : 8
@@ -125,7 +125,7 @@ class PostService {
       },
       {
         $sort: {
-          score: -1  // Sắp xếp theo điểm liên quan
+          score: -1 // Sắp xếp theo điểm liên quan
         }
       }
     ];
@@ -133,16 +133,37 @@ class PostService {
     if (mongoSkip !== undefined && mongoLimit !== undefined) {
       pipeline.push(
         {
-          $skip: mongoSkip  // Bỏ qua các kết quả trước đó
+          $skip: mongoSkip // Bỏ qua các kết quả trước đó
         },
         {
-          $limit: mongoLimit  // Giới hạn số lượng kết quả trả về
+          $limit: mongoLimit // Giới hạn số lượng kết quả trả về
         }
       );
     }
 
     const posts = await PostModel.aggregate(pipeline).exec();
     return posts;
+  }
+
+  public async hidePost(postId: string): Promise<void> {
+    await PostModel.updateOne({ _id: postId }, { $set: { isHidden: true } });
+  }
+
+  public async getHiddenPosts(skip = 0, limit = 10): Promise<IPostDocument[]> {
+    const posts = await PostModel.find({ isHidden: true })
+      .sort({ createdAt: -1 }) // sắp xếp mới nhất
+      .skip(skip)
+      .limit(limit)
+      .exec();
+    return posts;
+  }
+
+  public async unhidePost(postId: string): Promise<void> {
+    const result = await PostModel.updateOne({ _id: postId }, { $set: { isHidden: false } });
+
+    if (result.matchedCount === 0) {
+      throw new Error('Post not found or already visible');
+    }
   }
 }
 

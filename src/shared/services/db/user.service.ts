@@ -112,6 +112,50 @@ class UserService {
     return totalCount;
   }
 
+  public async getUsers(query: object, skip: number, limit: number, sortOptions: Record<string, 1 | -1>): Promise<IUserDocument[]> {
+    try {
+      const users: IUserDocument[] = await UserModel.aggregate([
+        { $match: query },
+
+        { $skip: skip },
+        { $limit: limit },
+
+        { $sort: sortOptions },
+
+        // Kết hợp thông tin từ bảng Auth (nếu cần)
+        { $lookup: { from: 'Auth', localField: 'authId', foreignField: '_id', as: 'authId' } },
+        { $unwind: '$authId' },
+        {
+          $lookup: {
+            from: 'ReportProfile',
+            let: { userId: '$_id' }, // Đảm bảo truyền đúng userId
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $or: [{ $eq: ['$reportedUserId', '$$userId'] }, { $eq: ['$reporterId', '$$userId'] }]
+                  }
+                }
+              },
+              { $project: { reason: 1, description: 1, status: 1, createdAt: 1 } } // Chỉ chọn các trường cần thiết
+            ],
+            as: 'reportProfileInfo' // Lưu kết quả vào trường này
+          }
+        },
+
+        // Giải nổ mảng nếu có nhiều bản ghi trong reportProfileInfo
+        { $unwind: { path: '$reportProfileInfo', preserveNullAndEmptyArrays: true } },
+
+        { $project: this.aggregateProject() }
+      ]);
+
+      return users;
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
+  }
+
   public async searchUsers(regex: RegExp): Promise<ISearchUser[]> {
     const users = await AuthModel.aggregate([
       { $match: { username: regex } },
@@ -127,7 +171,7 @@ class UserService {
         }
       }
     ]);
-    users.forEach(user => {
+    users.forEach((user) => {
       console.log(`Username: ${user.username}, Profile Picture: ${user.profilePicture}`);
     });
     return users;
@@ -154,7 +198,14 @@ class UserService {
       social: 1,
       bgImageVersion: 1,
       bgImageId: 1,
-      profilePicture: 1
+      profilePicture: 1,
+      reportProfileInfo: {
+        _id: '$reportProfileInfo._id',
+        reason: '$reportProfileInfo.reason',
+        description: '$reportProfileInfo.description',
+        createdAt: '$reportProfileInfo.createdAt',
+        status: '$reportProfileInfo.status'
+      }
     };
   }
 }

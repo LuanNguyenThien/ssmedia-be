@@ -34,7 +34,7 @@ export interface IPostDocument extends Document {
       type?: string;
       subject?: string;
       agesuitable?: string;
-    }
+    };
     engagementPotential?: number;
     credibilityScore?: number;
     improvementSuggestions?: string[];
@@ -43,6 +43,8 @@ export interface IPostDocument extends Document {
   };
   vector?: any[]; // Store the vectorized data here
   createdAt?: Date;
+  isHidden: Boolean;
+    
 }
 
 export interface IGetPostsQuery {

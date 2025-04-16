@@ -18,7 +18,10 @@ const authSchema: Schema = new Schema(
     },
     createdAt: { type: Date, default: Date.now },
     passwordResetToken: { type: String, default: '' },
-    passwordResetExpires: { type: Number }
+    passwordResetExpires: { type: Number },
+    isBanned: { type: Boolean, default: false },
+    banReason: { type: String, default: null },
+    bannedAt: { type: Date, default: null }
   },
   {
     toJSON: {
