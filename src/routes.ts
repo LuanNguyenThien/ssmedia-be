@@ -14,6 +14,7 @@ import { chatRoutes } from '@chat/routes/chatRoutes';
 import { groupChatRoutes } from '@chat/routes/groupchatRoutes';
 import { userRoutes } from '@user/routes/userRoutes';
 import { healthRoutes } from '@user/routes/healthRoutes';
+import { searchRoutes } from '@search/routes/searchRoutes';
 
 const BASE_PATH = '/api/v1';
 
@@ -39,6 +40,7 @@ export default (app: Application) => {
     app.use(BASE_PATH, authMiddleware.verifyUser, chatRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, groupChatRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, userRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, searchRoutes.routes());
   };
   routes();
 };

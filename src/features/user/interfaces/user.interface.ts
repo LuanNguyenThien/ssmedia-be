@@ -61,6 +61,8 @@ export interface ISearchUser {
   username: string;
   email: string;
   avatarColor: string;
+  followersCount?: number;
+  uId?: string;
 }
 
 export interface ISocketData {

@@ -65,7 +65,7 @@ class PostService {
     const user: IUserDocument | null = await UserModel.findById(userId);
     if (!user) {
       return [];
-    }else {
+    } else {
       const userVector: number[] = user.user_vector as number[];
       console.log(userVector);
       if (userVector !== undefined && userVector.length === 0) {
@@ -77,7 +77,12 @@ class PostService {
     }
   }
 
-  public async searchPostsByVector(queryVector: number[], mongoSkip?: number, mongoLimit?: number, userId?: string): Promise<IPostDocument[]> {
+  public async searchPostsByVector(
+    queryVector: number[],
+    mongoSkip?: number,
+    mongoLimit?: number,
+    userId?: string
+  ): Promise<IPostDocument[]> {
     // const pipeline: (PipelineStage | PipelineStage.CustomStages)[] = [
     //   {
     //     $vectorSearch: {
@@ -105,14 +110,14 @@ class PostService {
     //   }
     // ];
     let allCachedPosts: IPostDocument[] = [];
-    if(mongoLimit !== undefined && mongoSkip !== undefined) {
+    if (mongoLimit !== undefined && mongoSkip !== undefined) {
       allCachedPosts = await postCache.getAllPostsforUserFromCache(userId as string);
     }
     const pipeline: any[] = [
       {
         $vectorSearch: {
-          index: "vectorPost_index",
-          path: "post_embedding",
+          index: 'vectorPost_index',
+          path: 'post_embedding',
           queryVector: queryVector,
           numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit + 50 : 100,
           limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit : 10
@@ -120,7 +125,7 @@ class PostService {
       } as any,
       {
         $match: {
-          privacy: { $ne: 'Private' }  // Lọc các bài post có privacy khác 'Private'
+          privacy: { $ne: 'Private' } // Lọc các bài post có privacy khác 'Private'
         }
       },
       {
@@ -134,7 +139,7 @@ class PostService {
       },
       {
         $sort: {
-          score: -1  // Sắp xếp theo điểm liên quan
+          score: -1 // Sắp xếp theo điểm liên quan
         }
       }
     ];
@@ -150,10 +155,11 @@ class PostService {
       //   }
       // );
       const combinedPosts = [...allCachedPosts, ...mongoPosts];
-      const uniquePosts = Array.from(new Set(combinedPosts.map(post => post._id.toString())))
-        .map(id => combinedPosts.find(post => post._id.toString() === id));
+      const uniquePosts = Array.from(new Set(combinedPosts.map((post) => post._id.toString()))).map((id) =>
+        combinedPosts.find((post) => post._id.toString() === id)
+      );
 
-      return uniquePosts.slice(allCachedPosts.length as number, allCachedPosts.length as number + mongoLimit as number);
+      return uniquePosts.slice(allCachedPosts.length as number, ((allCachedPosts.length as number) + mongoLimit) as number);
     }
     return mongoPosts;
   }
