@@ -58,8 +58,8 @@ def preprocess_text(text):
     text = re.sub(r'[^\w\s]', '', text)
     return text
 
-def combine_text(main_topics, disciplines, key_concepts, range_age_suitable, related_topics, content_tags, potential_outcomes):
-    combined_text = f"{', '.join(main_topics)}. {', '.join(content_tags)}. {', '.join(key_concepts)}. {', '.join(potential_outcomes)}. {', '.join(related_topics)}. {', '.join(disciplines)}. Age Suitable: {range_age_suitable}."
+def combine_text(content_summary, main_topics, disciplines, key_concepts, range_age_suitable, related_topics, content_tags, potential_outcomes):
+    combined_text = f"{content_summary}. {', '.join(main_topics)}. {', '.join(content_tags)}. {', '.join(key_concepts)}. {', '.join(potential_outcomes)}. {', '.join(related_topics)}. {', '.join(disciplines)}. Age Suitable: {range_age_suitable}."
     return combined_text
 
 def is_math_expression(text):

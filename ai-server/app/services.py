@@ -8,7 +8,7 @@ genai.configure(api_key=Config.API_KEY)
 async def clarify_text_for_vectorization(text):
     try:
         # Sử dụng Gemini để làm rõ ý nghĩa của văn bản
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
         prompt = f"""You are an assistant specializing in analyzing and extracting concise key topics or noun phrases for semantic search and vectorization. Your primary goal is to identify the core intent of the input text and extract relevant keywords or concepts, prioritizing domain-specific knowledge before any secondary aspects (e.g., study skills or strategies). The output must always be clean, concise, and in English, regardless of the input language.
 
         Key Instructions:
@@ -23,7 +23,7 @@ async def clarify_text_for_vectorization(text):
 
         Output Structure:
             Main Idea: [A concise summary of the user's intent or the primary topic in English.]
-            Related Topics: (At least 5-10 related topics or subfields in English, listed in order of relevance.)
+            Related Topics: (At least 8-15 related topics or subfields in English, listed in order of relevance.)
                 [Primary domain-specific keywords ranked by relevance.]
                 [Additional subtopics or related concepts expanding on the domain.]
                 [If content is relevant to request document. Bonus some keywords related to learning methods or document, research, share knowledge, exam document about topics and subjects.]
@@ -93,7 +93,7 @@ async def clarify_text_for_vectorization(text):
 async def translate_to_english(text):
     try:
         # Sử dụng Gemini để dịch văn bản sang tiếng Anh
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
         prompt = f"Dịch câu sau sang tiếng Anh giúp tôi, đang cần để vector hóa dữ liệu: '{text}'"
         response = model.generate_content(prompt)
     
@@ -109,7 +109,7 @@ async def translate_to_english(text):
 
 async def analyze_content_with_gemini(content, language):
     try:
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
         # prompt = f"""Analyze the following content by english for a learning-focused social network:
 
         # Content: "{content}"
@@ -160,6 +160,9 @@ async def analyze_content_with_gemini(content, language):
         11. Improvement Suggestions (Suggestions for improvement)
         12. Related Topics (List of Related Topics)
         13. Content Tags (List of Tags)
+        14. Content Summary (A concise, high-value summary of the main content in English, focusing on the core ideas and key information. 
+            The summary should be a short paragraph, not a list, and should avoid generic statements. This summary is intended for semantic vectorization, 
+            so it must capture the essence and most important points of the content clearly and succinctly.)
 
         Ensure that your ENTIRE response is a valid JSON object.
         """
@@ -213,6 +216,7 @@ async def analyze_content(content, id):
 
         if(cleaned_analysis.get("Content Appropriateness") != "Not Appropriate"):
             combined_result = combine_text(
+                content_summary=cleaned_analysis.get("Content Summary", "N/A"),
                 main_topics=cleaned_analysis.get("Main Topics", []),
                 key_concepts=cleaned_analysis.get("Key Concepts", []),
                 disciplines=cleaned_analysis.get("Related Academic Disciplines", []),
