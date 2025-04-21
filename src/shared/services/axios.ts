@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { config } from '@root/config';
 
-export let BASE_ENDPOINT = 'development';
+export let BASE_ENDPOINT = '';
 
 if (config.NODE_ENV === 'development') {
   BASE_ENDPOINT = 'http://localhost:8000';
