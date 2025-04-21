@@ -21,6 +21,16 @@ class ReportProfileService {
 
     return users;
   }
+
+  public async updateReportProfileStatus(
+    reportId: string,
+    status: 'pending' | 'reviewed' | 'resolved'
+  ): Promise<IReportProfileDocument | null> {
+    const updatedReport = await ReportProfileModel.findByIdAndUpdate(reportId, { status }, { new: true });
+
+    return updatedReport;
+  }
+  
 }
 
 export const reportProfileService: ReportProfileService = new ReportProfileService();

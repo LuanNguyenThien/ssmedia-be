@@ -28,7 +28,7 @@ export class AuthMiddleware {
     try {
       const payload: AuthPayload = JWT.verify(req.session?.jwt, config.JWT_TOKEN!) as AuthPayload;
       req.currentUser = payload;
-      console.log(payload.role, "role", 'ADMIN') ;
+      
       if (payload.role !== 'ADMIN') {
         throw new NotAuthorizedError(`Access denied. Required role: ADMIN`);
       }

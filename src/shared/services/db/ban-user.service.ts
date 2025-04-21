@@ -44,16 +44,50 @@ class UserBanService {
     return updatedAuth;
   }
 
-  public async getBannedUsers(): Promise<IAuthDocument[]> {
+  public async getBannedUsers(userId: string, skip: number, limit: number): Promise<IUserDocument[]> {
     try {
-      // Truy vấn tất cả người dùng bị ban
-      const bannedUsers = await AuthModel.find({ isBanned: true });
+      const bannedAuths = await AuthModel.find({ isBanned: true });
+      const authIds = bannedAuths.map((auth) => auth._id);
+
+      const bannedUsers = await UserModel.find({ authId: { $in: authIds } }).populate('authId'); // Lấy thêm thông tin từ bảng Auth
 
       return bannedUsers;
     } catch (error) {
       console.error('Error fetching banned users:', error);
       return [];
     }
+  }
+
+  private aggregateProject() {
+    return {
+      _id: 1,
+      username: '$authId.username',
+      uId: '$authId.uId',
+      email: '$authId.email',
+      avatarColor: '$authId.avatarColor',
+      createdAt: '$authId.createdAt',
+      postsCount: 1,
+      work: 1,
+      school: 1,
+      quote: 1,
+      location: 1,
+      blocked: 1,
+      blockedBy: 1,
+      followersCount: 1,
+      followingCount: 1,
+      notifications: 1,
+      social: 1,
+      bgImageVersion: 1,
+      bgImageId: 1,
+      profilePicture: 1,
+      reportProfileInfo: {
+        _id: '$reportProfileInfo._id',
+        reason: '$reportProfileInfo.reason',
+        description: '$reportProfileInfo.description',
+        createdAt: '$reportProfileInfo.createdAt',
+        status: '$reportProfileInfo.status'
+      }
+    };
   }
 }
 

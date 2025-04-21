@@ -33,7 +33,9 @@ export class getUser {
 
   public async getBannedUsers(req: Request, res: Response): Promise<void> {
     try {
-      const bannedUsers = await userBanService.getBannedUsers();
+      const { page } = req.params;
+      const skip: number = (parseInt(page) - 1) * PAGE_SIZE;
+      const bannedUsers = await userBanService.getBannedUsers(req.currentUser!.userId, skip, PAGE_SIZE);
 
       if (bannedUsers.length === 0) {
         res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'No banned users found' });

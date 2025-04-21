@@ -14,8 +14,9 @@ class UsersRoutes {
     this.router.get('/users/all/:page', authMiddleware.checkAuthentication, getUser.prototype.getAllUsers);
     this.router.get('/users/:userId', authMiddleware.checkAuthentication, getUser.prototype.getByUserId);
     this.router.post('/banuser/', authMiddleware.checkAuthentication, Add.prototype.banUser);
-    this.router.get('/banuser/', authMiddleware.checkAuthentication, getUser.prototype.getBannedUsers);
-
+    this.router.post('/unbanuser/', authMiddleware.checkAuthentication, Add.prototype.unbanUser);
+    this.router.get('/banuser/:page', authMiddleware.checkAuthentication, getUser.prototype.getBannedUsers);
+    this.router.put('/reportprofile/status', authMiddleware.checkAuthentication, Add.prototype.updateReportStatus);
     return this.router;
   }
 }
