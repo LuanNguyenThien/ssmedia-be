@@ -1,7 +1,7 @@
 import { IMessageData } from '@chat/interfaces/chat.interface';
 import { IConversationDocument } from '@chat/interfaces/conversation.interface';
 import { ConversationModel } from '@chat/models/conversation.schema';
-import { GroupChatModel } from '@chat/models/group-chat.schema';
+import { GroupChatModel } from '@root/features/group-chat/models/group-chat.schema';
 import { MessageModel } from '@chat/models/chat.schema';
 import { ObjectId } from 'mongodb';
 

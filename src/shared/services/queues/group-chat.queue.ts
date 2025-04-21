@@ -1,4 +1,4 @@
-import { IGroupChat, IGroupChatDocument, IGroupChatJob } from '@chat/interfaces/group-chat.interface';
+import { IGroupChat, IGroupChatDocument, IGroupChatJob } from '@root/features/group-chat/interfaces/group-chat.interface';
 import { BaseQueue } from '@service/queues/base.queue';
 import { groupChatWorker } from '@worker/group-chat.worker';
 

@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { authMiddleware } from '@global/helpers/auth-middleware';
-import { GroupChat } from '@chat/controllers/group-chat';
+import { GroupChat } from '@root/features/group-chat/controllers/group-chat';
 
 class GroupChatRoutes {
   private router: Router;
@@ -14,8 +14,8 @@ class GroupChatRoutes {
 
     this.router.post('/group-chat/create', authMiddleware.checkAuthentication, groupChat.create);
     this.router.get('/group-chat/:groupId', authMiddleware.checkAuthentication, groupChat.getGroupChat);
-    // this.router.post('/group/message', authMiddleware.checkAuthentication, groupChat.groupMessage);
     // this.router.put('/group/add-members', authMiddleware.checkAuthentication, groupChat.addMembers);
+    // this.router.post('/group/message', authMiddleware.checkAuthentication, groupChat.groupMessage);
     // this.router.put('/group/remove-members', authMiddleware.checkAuthentication, groupChat.removeMembers);
     // this.router.get('/groups', authMiddleware.checkAuthentication, groupChat.getUserGroups);
 

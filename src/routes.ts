@@ -11,7 +11,7 @@ import { followerRoutes } from '@follower/routes/followerRoutes';
 import { notificationRoutes } from '@notification/routes/notificationRoutes';
 import { imageRoutes } from '@image/routes/imageRoutes';
 import { chatRoutes } from '@chat/routes/chatRoutes';
-import { groupChatRoutes } from '@chat/routes/groupchatRoutes';
+import { groupChatRoutes } from '@root/features/group-chat/routes/groupchatRoutes';
 import { userRoutes } from '@user/routes/userRoutes';
 import { healthRoutes } from '@user/routes/healthRoutes';
 import { searchRoutes } from '@search/routes/searchRoutes';

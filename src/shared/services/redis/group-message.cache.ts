@@ -1,7 +1,7 @@
 import { BaseCache } from '@service/redis/base.cache';
 import Logger from 'bunyan';
 import { config } from '@root/config';
-import { IGroupChat, IGroupChatDocument, IGroupChatMember } from '@chat/interfaces/group-chat.interface';
+import { IGroupChat, IGroupChatDocument, IGroupChatMember } from '@root/features/group-chat/interfaces/group-chat.interface';
 import { ServerError } from '@global/helpers/error-handler';
 import { IMessageData } from '@chat/interfaces/chat.interface';
 import { Helpers } from '@global/helpers/helpers';
@@ -105,7 +105,7 @@ export class GroupMessageCache extends BaseCache {
           const members = Helpers.parseJson(group.members) as IGroupChatMember[];
           
           // Kiểm tra xem thành viên đã tồn tại chưa
-          const existingMember = members.find(member => member.userId === newMember.userId);
+          const existingMember = members.find((member: IGroupChatMember) => member.userId === newMember.userId);
           if (existingMember) {
             return group as unknown as IGroupChat; // Thành viên đã tồn tại, không thay đổi gì
           }
@@ -148,7 +148,7 @@ export class GroupMessageCache extends BaseCache {
             if (group && group.members) {
               const members = Helpers.parseJson(group.members) as IGroupChatMember[];
               // Tìm và cập nhật thông tin của thành viên
-              const updatedMembers = members.map(member => {
+              const updatedMembers = members.map((member: IGroupChatMember) => {
                 if (member.userId === userId) {
                   return {
                     ...member,
@@ -183,7 +183,7 @@ export class GroupMessageCache extends BaseCache {
           const members = Helpers.parseJson(group.members) as IGroupChatMember[];
           
           // Lọc ra thành viên cần xóa
-          const updatedMembers = members.filter(member => member.userId !== userId);
+          const updatedMembers = members.filter((member: IGroupChatMember) => member.userId !== userId);
           // Cập nhật lại danh sách thành viên
           await this.client.HSET(`groupChats:${groupId}`, 'members', JSON.stringify(updatedMembers));
           // Xóa nhóm khỏi danh sách nhóm của thành viên

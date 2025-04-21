@@ -17,7 +17,7 @@ import { emailQueue } from '@service/queues/email.queue';
 // import { UserCache } from '@service/redis/user.cache';
 import { cache } from '@service/redis/cache';
 import { chatQueue } from '@service/queues/chat.queue';
-import { IGroupChatDocument } from '@chat/interfaces/group-chat.interface';
+import { IGroupChatDocument } from '@root/features/group-chat/interfaces/group-chat.interface';
 
 // const messageCache: MessageCache = new MessageCache();
 // const userCache: UserCache = new UserCache();

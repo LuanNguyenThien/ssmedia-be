@@ -34,6 +34,7 @@
       "@notification/*": ["src/features/notifications/*"],
       "@image/*": ["src/features/images/*"],
       "@chat/*": ["src/features/chat/*"],
+      "@group-chat/*": ["src/features/group-chat/*"],
       "@search/*": ["src/features/search/*"],
       "@global/*": ["src/shared/globals/*"],
       "@api-serverAI/*": ["src/shared/services/api-serverAI/*"],
