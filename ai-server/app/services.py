@@ -58,6 +58,7 @@ async def clarify_text_for_vectorization(text):
             - Ensure domain-specific keywords dominate the list, with skills and strategies positioned only as secondary or supporting concepts.
             - Avoid generic modifiers or filler words unless they significantly impact meaning.
             - Maintain clean, semantically relevant outputs in English for optimal use in vectorization and semantic search.
+        Return as fast as possible, and avoid unnecessary explanations or context.
         """
 
         # prompt = f"""Please clarify the following text to ensure it is meaningful and semantically rich for vectorization purposes. 
