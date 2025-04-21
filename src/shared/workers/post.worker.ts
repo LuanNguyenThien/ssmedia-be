@@ -46,6 +46,7 @@ class PostWorker {
         socketIONotificationObject.emit('post analysis', message, {userId: value.userId} );
 
         const updatedPost: IPostDocument = {
+          htmlPost: value.htmlPost,
           post: value.post,
           bgColor: value.bgColor,
           privacy: 'Private', // Cập nhật quyền riêng tư thành 'private'
@@ -61,6 +62,7 @@ class PostWorker {
         await Update.prototype.serverUpdatePost(value._id, updatedPost);
       } else {
         const updatedPost: IPostDocument = {
+          htmlPost: value.htmlPost,
           post: value.post,
           bgColor: value.bgColor,
           privacy: value.privacy,
