@@ -11,9 +11,17 @@ const authSchema: Schema = new Schema(
     email: { type: String },
     password: { type: String },
     avatarColor: { type: String },
+    role: {
+      type: String,
+      enum: ['USER', 'ADMIN'],
+      default: 'USER'
+    },
     createdAt: { type: Date, default: Date.now },
     passwordResetToken: { type: String, default: '' },
-    passwordResetExpires: { type: Number }
+    passwordResetExpires: { type: Number },
+    isBanned: { type: Boolean, default: false },
+    banReason: { type: String, default: null },
+    bannedAt: { type: Date, default: null }
   },
   {
     toJSON: {

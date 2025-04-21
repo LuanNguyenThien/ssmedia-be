@@ -224,7 +224,7 @@ export class PostCache extends BaseCache {
       const postCount: string[] = await this.client.HMGET(`users:${currentUserId}`, 'postsCount');
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();
       await this.client.ZADD('post', { score: parseInt(uId, 10), value: `${key}` });
-      for(const [itemKey, itemValue] of Object.entries(dataToSave)) {
+      for (const [itemKey, itemValue] of Object.entries(dataToSave)) {
         multi.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);
       }
       const count: number = parseInt(postCount[0], 10) + 1;
@@ -263,7 +263,7 @@ export class PostCache extends BaseCache {
       }
 
       const postKey = `posts:${postId}`;
-      const post: IPostDocument = await this.client.HGETALL(postKey) as unknown as IPostDocument;
+      const post: IPostDocument = (await this.client.HGETALL(postKey)) as unknown as IPostDocument;
 
       if (!post || Object.keys(post).length === 0) {
         return null;
@@ -482,7 +482,7 @@ export class PostCache extends BaseCache {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-      for(const [itemKey, itemValue] of Object.entries(dataToSave)) {
+      for (const [itemKey, itemValue] of Object.entries(dataToSave)) {
         await this.client.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);
       }
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();
@@ -536,7 +536,27 @@ export class PostCache extends BaseCache {
         // Nếu userId đã có, xóa khỏi danh sách
         savedBy.splice(userIndex, 1);
       }
-       await this.client.HSET(postKey, 'savedBy', JSON.stringify(savedBy));
+      await this.client.HSET(postKey, 'savedBy', JSON.stringify(savedBy));
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async toggleReportPostInCache(userId: string, postId: string): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      // Kiểm tra xem bài viết yêu thích đã tồn tại trong cache chưa
+      const isReport = await this.client.ZSCORE(`ReportPosts:${userId}`, postId);
+      if (isReport) {
+        // Nếu đã tồn tại, xóa bài viết yêu thích khỏi cache
+        await this.client.ZREM(`ReportPosts:${userId}`, postId);
+      } else {
+        // Nếu chưa tồn tại, thêm bài viết yêu thích vào cache
+        await this.client.ZADD(`ReportPosts:${userId}`, { score: Date.now(), value: postId });
+      }
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');

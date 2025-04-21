@@ -4,6 +4,7 @@ import { ObjectId } from 'mongodb';
 export interface IUserDocument extends Document {
   _id: string | ObjectId;
   authId: string | ObjectId;
+  role: String;
   username?: string;
   email?: string;
   password?: string;

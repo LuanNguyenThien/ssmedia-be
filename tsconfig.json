@@ -19,15 +19,14 @@
     "allowSyntheticDefaultImports": true,
     "pretty": true,
     "resolveJsonModule": true,
-    "plugins": [
-      { "transform": "typescript-transform-paths" },
-      { "transform": "typescript-transform-paths", "afterDeclarations": true },
-    ],
+    "plugins": [{ "transform": "typescript-transform-paths" }, { "transform": "typescript-transform-paths", "afterDeclarations": true }],
     "paths": {
       "@auth/*": ["src/features/auth/*"],
       "@user/*": ["src/features/user/*"],
       "@post/*": ["src/features/post/*"],
       "@favorite-posts/*": ["src/features/favorite-posts/*"],
+      "@report-posts/*": ["src/features/report-posts/*"],
+      "@report-profiles/*": ["src/features/report-profiles/*"],
       "@reaction/*": ["src/features/reactions/*"],
       "@comment/*": ["src/features/comments/*"],
       "@follower/*": ["src/features/followers/*"],
@@ -40,6 +39,9 @@
       "@service/*": ["src/shared/services/*"],
       "@socket/*": ["src/shared/sockets/*"],
       "@worker/*": ["src/shared/workers/*"],
+      "@users/*": ["src/features-admin/users/*"],
+      "@posts/*": ["src/features-admin/posts/*"],
+      "@statistics/*": ["src/features-admin/statistics/*"],
       "@root/*": ["src/*"]
     }
   }

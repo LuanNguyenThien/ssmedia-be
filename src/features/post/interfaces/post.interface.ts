@@ -35,7 +35,7 @@ export interface IPostDocument extends Document {
       type?: string;
       subject?: string;
       agesuitable?: string;
-    }
+    };
     engagementPotential?: number;
     credibilityScore?: number;
     improvementSuggestions?: string[];
@@ -46,6 +46,7 @@ export interface IPostDocument extends Document {
   createdAt?: Date;
   score?: number;
   favoritedBy?: string[];
+  isHidden?: Boolean;
 }
 
 export interface IGetPostsQuery {

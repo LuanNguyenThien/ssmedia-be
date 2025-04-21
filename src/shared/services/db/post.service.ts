@@ -163,6 +163,27 @@ class PostService {
     }
     return mongoPosts;
   }
+
+  public async hidePost(postId: string): Promise<void> {
+    await PostModel.updateOne({ _id: postId }, { $set: { isHidden: true } });
+  }
+
+  public async getHiddenPosts(skip = 0, limit = 10): Promise<IPostDocument[]> {
+    const posts = await PostModel.find({ isHidden: true })
+      .sort({ createdAt: -1 }) // sắp xếp mới nhất
+      .skip(skip)
+      .limit(limit)
+      .exec();
+    return posts;
+  }
+
+  public async unhidePost(postId: string): Promise<void> {
+    const result = await PostModel.updateOne({ _id: postId }, { $set: { isHidden: false } });
+
+    if (result.matchedCount === 0) {
+      throw new Error('Post not found or already visible');
+    }
+  }
 }
 
 export const postService: PostService = new PostService();

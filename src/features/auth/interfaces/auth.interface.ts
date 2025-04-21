@@ -14,6 +14,7 @@ export interface AuthPayload {
   userId: string;
   uId?: string;
   email?: string;
+  role?: string;
   username: string;
   avatarColor: string;
   iat?: number;
@@ -22,6 +23,7 @@ export interface AuthPayload {
 export interface IAuthDocument extends Document {
   _id: string | ObjectId;
   uId: string;
+  role: string;
   username: string;
   email: string;
   password?: string;

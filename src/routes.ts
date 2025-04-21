@@ -13,10 +13,16 @@ import { imageRoutes } from '@image/routes/imageRoutes';
 import { chatRoutes } from '@chat/routes/chatRoutes';
 import { groupChatRoutes } from '@chat/routes/groupchatRoutes';
 import { userRoutes } from '@user/routes/userRoutes';
+import { usersRoutes } from '@users/routes/usersRoutes';
+import { postsRoutes } from '@posts/routes/postsRoutes';
+import { statisticRoutes } from '@statistics/routes/statisticRoutes';
 import { healthRoutes } from '@user/routes/healthRoutes';
 import { searchRoutes } from '@search/routes/searchRoutes';
+import { reportpostRoutes } from '@report-posts/routes/report-postRoutes';
+import { reportprofileRoutes } from '@report-profiles/routes/report-profileRoutes';
 
 const BASE_PATH = '/api/v1';
+const BASE_PATH_ADMIN = '/api/v1/admin';
 
 export default (app: Application) => {
   const routes = () => {
@@ -28,10 +34,15 @@ export default (app: Application) => {
 
     app.use(BASE_PATH, authRoutes.routes());
     app.use(BASE_PATH, authRoutes.signoutRoute());
+    app.use(BASE_PATH_ADMIN, authMiddleware.verifyAdmin, usersRoutes.routes());
+    app.use(BASE_PATH_ADMIN, authMiddleware.verifyAdmin, postsRoutes.routes());
+    app.use(BASE_PATH_ADMIN, authMiddleware.verifyAdmin, statisticRoutes.routes());
 
     app.use(BASE_PATH, authMiddleware.verifyUser, currentUserRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, postRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, favpostRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, reportpostRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, reportprofileRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, reactionRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, commentRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, followerRoutes.routes());
