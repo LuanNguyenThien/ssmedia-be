@@ -149,4 +149,9 @@ build
 # SvelteKit build / generate output
 .svelte-kit
 
+#other AI
+ai-server/run.py
+ai-server/server-ai.py
+ai-server/app.py
+
 # End of https://www.toptal.com/developers/gitignore/api/node

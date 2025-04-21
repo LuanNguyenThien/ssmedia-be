@@ -11,6 +11,9 @@ const messageSchema: Schema = new Schema({
   receiverUsername: { type: String, default: '' },
   receiverAvatarColor: { type: String, default: '' },
   receiverProfilePicture: { type: String, default: '' },
+  isGroupChat: { type: Boolean, default: false },
+  groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'GroupChat', default: null },
+  groupName: { type: String, default: '' },
   body: { type: String, default: '' },
   gifUrl: { type: String, default: '' },
   isRead: { type: Boolean, default: false },
@@ -20,6 +23,10 @@ const messageSchema: Schema = new Schema({
   reaction: Array,
   createdAt: { type: Date, default: Date.now }
 });
+
+messageSchema.index({ senderId: 1, createdAt: -1 });
+messageSchema.index({ receiverId: 1, createdAt: -1 });
+messageSchema.index({ groupId: 1, isGroupChat: 1, createdAt: -1 });
 
 const MessageModel: Model<IMessageDocument> = model<IMessageDocument>('Message', messageSchema, 'Message');
 export { MessageModel };

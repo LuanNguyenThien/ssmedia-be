@@ -10,6 +10,7 @@ export interface IPostDocument extends Document {
   avatarColor: string;
   profilePicture: string;
   post: string;
+  htmlPost?: string;
   bgColor: string;
   commentsCount: number;
   imgVersion?: string;
@@ -43,8 +44,9 @@ export interface IPostDocument extends Document {
   };
   vector?: any[]; // Store the vectorized data here
   createdAt?: Date;
-  isHidden: Boolean;
-    
+  score?: number;
+  favoritedBy?: string[];
+  isHidden?: Boolean;
 }
 
 export interface IGetPostsQuery {

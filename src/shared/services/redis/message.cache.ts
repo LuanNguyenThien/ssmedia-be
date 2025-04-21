@@ -6,7 +6,9 @@ import { ServerError } from '@global/helpers/error-handler';
 import { IMessageData, IChatUsers, IChatList, IGetMessageFromCache } from '@chat/interfaces/chat.interface';
 import { Helpers } from '@global/helpers/helpers';
 import { IReaction } from '@reaction/interfaces/reaction.interface';
+import { GroupMessageCache } from './group-message.cache';
 
+const groupMessageCache = new GroupMessageCache();
 const log: Logger = config.createLogger('messageCache');
 
 export class MessageCache extends BaseCache {
@@ -14,18 +16,23 @@ export class MessageCache extends BaseCache {
     super('messageCache');
   }
 
-  public async addChatListToCache(senderId: string, receiverId: string, conversationId: string): Promise<void> {
+  public async addChatListToCache(senderId: string, receiverId: string, id: string, type: 'personal' | 'group'): Promise<void> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
       const userChatList = await this.client.LRANGE(`chatList:${senderId}`, 0, -1);
+      const chatItem = type === 'personal' ? { type, receiverId, conversationId: id } : { type, groupId: id };
       if (userChatList.length === 0) {
-        await this.client.RPUSH(`chatList:${senderId}`, JSON.stringify({ receiverId, conversationId }));
+        await this.client.RPUSH(`chatList:${senderId}`, JSON.stringify(chatItem));
       } else {
-        const receiverIndex: number = findIndex(userChatList, (listItem: string) => listItem.includes(receiverId));
-        if (receiverIndex < 0) {
-          await this.client.RPUSH(`chatList:${senderId}`, JSON.stringify({ receiverId, conversationId }));
+        const itemIndex: number = findIndex(userChatList, (listItem: string) => 
+        {
+          const parsed = Helpers.parseJson(listItem);
+          return type === 'personal' ? parsed.receiverId === receiverId : parsed.groupId === id;
+        });
+        if (itemIndex < 0) {
+          await this.client.RPUSH(`chatList:${senderId}`, JSON.stringify(chatItem));
         }
       }
     } catch (error) {
@@ -97,8 +104,46 @@ export class MessageCache extends BaseCache {
       const conversationChatList: IMessageData[] = [];
       for (const item of userChatList) {
         const chatItem: IChatList = Helpers.parseJson(item) as IChatList;
-        const lastMessage: string = (await this.client.LINDEX(`messages:${chatItem.conversationId}`, -1)) as string;
-        conversationChatList.push(Helpers.parseJson(lastMessage));
+        const id = chatItem.type === 'personal' ? chatItem.conversationId : chatItem.groupId;
+        const lastMessage: string = (await this.client.LINDEX(`messages:${id}`, -1)) as string;
+        if (lastMessage) {
+          const message: IMessageData = Helpers.parseJson(lastMessage);
+          if (chatItem.type === 'group') {
+            const group = await groupMessageCache.getGroupChat(id as string);
+            message.groupId = id;
+            message.groupName = group?.name;
+            message.groupImage = group?.profilePicture;
+            message.isGroupChat = true;
+          }
+          conversationChatList.push(message);
+        } else if (chatItem.type === 'group') {
+          const group = await groupMessageCache.getGroupChat(id as string);
+          const message: IMessageData = {
+            _id: '', // Có thể để trống hoặc tạo ID tạm
+            conversationId: undefined,
+            receiverId: undefined,
+            receiverUsername: undefined,
+            receiverAvatarColor: undefined,
+            receiverProfilePicture: undefined,
+            senderUsername: '',
+            senderId: '',
+            senderAvatarColor: '',
+            senderProfilePicture: '',
+            gifUrl: '',
+            selectedImage: '',
+            reaction: [],
+            body: '', // Không có nội dung
+            createdAt: group.createdAt,
+            isRead: true, // Mặc định đã đọc
+            deleteForMe: false,
+            deleteForEveryone: false,
+          };
+          message.groupId = id;
+          message.groupName = group?.name;
+          message.isGroupChat = true;
+          message.groupImage = group?.profilePicture;
+          conversationChatList.push(message);
+        }
       }
       return conversationChatList;
     } catch (error) {
@@ -107,25 +152,51 @@ export class MessageCache extends BaseCache {
     }
   }
 
-  public async getChatMessagesFromCache(senderId: string, receiverId: string): Promise<IMessageData[]> {
+  public async getChatMessagesFromCache(senderId: string, receiverId: string, isGroupChat: boolean = false): Promise<IMessageData[]> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
       const userChatList: string[] = await this.client.LRANGE(`chatList:${senderId}`, 0, -1);
-      const receiver: string = find(userChatList, (listItem: string) => listItem.includes(receiverId)) as string;
-      const parsedReceiver: IChatList = Helpers.parseJson(receiver) as IChatList;
-      if (parsedReceiver) {
-        const userMessages: string[] = await this.client.LRANGE(`messages:${parsedReceiver.conversationId}`, 0, -1);
-        const chatMessages: IMessageData[] = [];
-        for (const item of userMessages) {
-          const chatItem = Helpers.parseJson(item) as IMessageData;
-          chatMessages.push(chatItem);
-        }
-        return chatMessages;
+      let chatItem: string | undefined;
+      if (isGroupChat) {
+        chatItem = userChatList.find((item: string) => {
+          const parsed = Helpers.parseJson(item) as { type: string; groupId?: string };
+          return parsed.type === 'group' && parsed.groupId === receiverId;
+        });
       } else {
-        return [];
+        chatItem = userChatList.find((item: string) => {
+          const parsed = Helpers.parseJson(item) as { type: string; receiverId?: string };
+          return parsed.type === 'personal' && parsed.receiverId === receiverId;
+        });
       }
+      if (!chatItem) {
+        return []; // Không tìm thấy chat list phù hợp
+      }
+      const parsedChatItem = Helpers.parseJson(chatItem) as { conversationId?: string; groupId?: string };
+      const chatId = isGroupChat ? parsedChatItem.groupId : parsedChatItem.conversationId;
+
+      if (!chatId) {
+        return []; // Không có chatId hợp lệ
+      }
+
+      const userMessages: string[] = await this.client.LRANGE(`messages:${chatId}`, 0, -1);
+      const chatMessages: IMessageData[] = userMessages.map((item) => Helpers.parseJson(item) as IMessageData);
+
+      return chatMessages;
+      // const receiver: string = find(userChatList, (listItem: string) => listItem.includes(receiverId)) as string;
+      // const parsedReceiver: IChatList = Helpers.parseJson(receiver) as IChatList;
+      // if (parsedReceiver) {
+      //   const userMessages: string[] = await this.client.LRANGE(`messages:${parsedReceiver.conversationId}`, 0, -1);
+      //   const chatMessages: IMessageData[] = [];
+      //   for (const item of userMessages) {
+      //     const chatItem = Helpers.parseJson(item) as IMessageData;
+      //     chatMessages.push(chatItem);
+      //   }
+      //   return chatMessages;
+      // } else {
+      //   return [];
+      // }
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');

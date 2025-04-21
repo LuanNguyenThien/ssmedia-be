@@ -164,16 +164,15 @@ class UserService {
       {
         $project: {
           _id: '$user._id',
+          uId: '$uId',
           username: 1,
           email: 1,
           avatarColor: 1,
-          profilePicture: '$user.profilePicture'
+          profilePicture: '$user.profilePicture',
+          followersCount: '$user.followersCount',
         }
       }
     ]);
-    users.forEach((user) => {
-      console.log(`Username: ${user.username}, Profile Picture: ${user.profilePicture}`);
-    });
     return users;
   }
 

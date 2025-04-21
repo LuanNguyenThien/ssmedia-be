@@ -12,9 +12,9 @@ declare global {
 
 export interface AuthPayload {
   userId: string;
-  role: string;
-  uId: string;
-  email: string;
+  uId?: string;
+  email?: string;
+  role?: string;
   username: string;
   avatarColor: string;
   iat?: number;

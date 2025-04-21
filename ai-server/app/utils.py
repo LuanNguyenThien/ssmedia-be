@@ -1,4 +1,3 @@
-import os
 import re
 import torch
 import sympy
@@ -7,8 +6,6 @@ from transformers import pipeline, AutoTokenizer, AutoModel, AlbertTokenizer, Al
 from pymongo import MongoClient
 from bson import ObjectId
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 db_name = "test"
 collection_name = "Post"
@@ -61,11 +58,13 @@ def preprocess_text(text):
     text = re.sub(r'[^\w\s]', '', text)
     return text
 
-def combine_text(main_topics, disciplines, key_concepts, range_age_suitable, related_topics, content_tags):
-    combined_text = f"Main Topics: {', '.join(main_topics)}. Discipline: {', '.join(disciplines)}. Key Concepts: {', '.join(key_concepts)}. Range Age Suitable: {range_age_suitable}. Related Topics: {', '.join(related_topics)}. Content Tags: {', '.join(content_tags)}."
+def combine_text(content_summary, main_topics, disciplines, key_concepts, range_age_suitable, related_topics, content_tags, potential_outcomes):
+    combined_text = f"{content_summary}. {', '.join(main_topics)}. {', '.join(content_tags)}. {', '.join(key_concepts)}. {', '.join(potential_outcomes)}. {', '.join(related_topics)}. {', '.join(disciplines)}. Age Suitable: {range_age_suitable}."
     return combined_text
 
 def is_math_expression(text):
+    if re.search(r'[^0-9+\-*/^().,\s|!%a-zA-Z]', text):
+        return False
     try:
         sympy.sympify(text)
         return True
@@ -112,4 +111,3 @@ def store_vector_in_mongodb(collection, post_embedding, id):
         {"_id": object_id},
         {"$set": {"post_embedding": post_embedding}}
     )
-    print("Document updated with vector data.")

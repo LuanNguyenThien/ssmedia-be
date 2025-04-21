@@ -25,9 +25,16 @@ export class Update {
 
   @joiValidation(postSchema)
   public async posts(req: Request, res: Response): Promise<void> {
-    const { post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
+    let { htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
     const { postId } = req.params;
+    if(htmlPost === undefined) {
+      htmlPost = '';
+    }
+    else if(post === undefined) {
+      post = '';
+    }
     const updatedPost: IPostDocument = {
+      htmlPost,
       post,
       bgColor,
       privacy,
@@ -43,7 +50,7 @@ export class Update {
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
-    // postQueue.addPostJob('analyzePostContent', { value: postUpdated });
+    postQueue.addPostJob('analyzePostContent', { value: postUpdated });
     res.status(HTTP_STATUS.OK).json({ message: 'Post updated successfully' });
   }
 
@@ -98,6 +105,10 @@ export class Update {
 
   private async addImageToExistingPost(req: Request): Promise<UploadApiResponse> {
     const { post, bgColor, feelings, privacy, gifUrl, profilePicture, image, video } = req.body;
+    let { htmlPost } = req.body;
+    if(htmlPost === undefined) {
+      htmlPost = '';
+    }
     const { postId } = req.params;
     const result: UploadApiResponse = image
       ? ((await uploads(image)) as UploadApiResponse)
@@ -107,6 +118,7 @@ export class Update {
     }
     const updatedPost: IPostDocument = {
       post,
+      htmlPost,
       bgColor,
       privacy,
       feelings,

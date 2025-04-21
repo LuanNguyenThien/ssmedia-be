@@ -2,6 +2,7 @@ import Queue, { Job } from 'bull';
 import Logger from 'bunyan';
 import { ExpressAdapter, createBullBoard, BullAdapter } from '@bull-board/express';
 import { config } from '@root/config';
+import { IGroupChat, IGroupChatDocument, IGroupChatJob } from '@chat/interfaces/group-chat.interface';
 import { IFavPostDocument } from '@favorite-posts/interfaces/fav-post.interface';
 import { IAuthJob } from '@auth/interfaces/auth.interface';
 import { IEmailJob, IUserJob } from '@user/interfaces/user.interface';
@@ -29,7 +30,10 @@ type IBaseJobData =
   | IChatJobData
   | IMessageData
   | IUserJob
-  | IFavPostDocument;
+  | IFavPostDocument
+  | IGroupChatJob
+  | IGroupChat
+  | IGroupChatDocument;
 
 let bullAdapters: BullAdapter[] = [];
 export let serverAdapter: ExpressAdapter;

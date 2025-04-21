@@ -2,7 +2,7 @@ import { DoneCallback, Job } from 'bull';
 import Logger from 'bunyan';
 import { config } from '@root/config';
 import { userService } from '@service/db/user.service';
-import axios from 'axios';
+import { textServiceAI } from '@api-serverAI/text/text.AIservice';
 import { UserModel } from '@user/models/user.schema';
 import { cache } from '@service/redis/cache';
 
@@ -27,14 +27,12 @@ class UserWorker {
       const { key, value } = job.data;
       await userService.updateUserInfo(key, value);
 
-      if (value.quote || value.school || value.work)  {
+      if (value.quote || value.school || value.work || value.location)  {
         try {
           const user = job.data.value;
-          const combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}.`;
-          const response = await axios.post('http://localhost:8000/vectorize', {
-            query: combinedText
-          });
-          const vectorizedData = response.data.vector;
+          const combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
+          const response = await textServiceAI.vectorizeText(combinedText);
+          const vectorizedData = response.vector;
           await UserModel.updateOne(
             { _id: key },
             { $set: { user_vector: vectorizedData } }

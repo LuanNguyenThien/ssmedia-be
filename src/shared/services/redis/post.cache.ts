@@ -30,18 +30,105 @@ export class PostCache extends BaseCache {
     }
   }
 
-  public async getPostsforUserFromCache(key: string, skip: number, limit: number): Promise<IPostDocument[]> {
+  public async getAllPostsforUserFromCache(key: string): Promise<IPostDocument[]> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-      const posts = await this.client.lRange(key, skip, skip + limit - 1);
+      key = `user:${key}:posts`;
+      const totalPosts = await this.client.lLen(key);
+      const posts = await this.client.lRange(key, 0, totalPosts - 1);
       return posts.map(post => JSON.parse(post));
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
     }
   }
+
+  // public async getPostsforUserFromCache(key: string, skip: number, limit: number): Promise<IPostDocument[]> {
+  //   try {
+  //     if (!this.client.isOpen) {
+  //       await this.client.connect();
+  //     }
+  //     const posts = await this.client.lRange(key, skip, skip + limit - 1);
+  //     return posts.map(post => JSON.parse(post));
+  //   } catch (error) {
+  //     log.error(error);
+  //     throw new ServerError('Server error. Try again.');
+  //   }
+  // }   
+
+  public async getPostsforUserFromCache(key: string, skip: number, limit: number): Promise<IPostDocument[]> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      // const keys = await this.client.keys('posts:*');
+      // for (const key of keys) {
+      //   const reactions = await this.client.hGet(key, 'reactions'); // Lấy trường "reactions"
+      //   if (reactions) {
+      //     const parsedReactions = JSON.parse(reactions);
+  
+      //     // Tính toán giá trị upvote và downvote
+      //     const upvote = (parsedReactions.like || 0) +
+      //                    (parsedReactions.love || 0) +
+      //                    (parsedReactions.happy || 0) +
+      //                    (parsedReactions.wow || 0);
+      //     const downvote = (parsedReactions.sad || 0) +
+      //                      (parsedReactions.angry || 0);
+  
+      //     // Cập nhật lại "reactions"
+      //     const updatedReactions = {
+      //       upvote: upvote,
+      //       downvote: downvote,
+      //     };
+      //     await this.client.hSet(key, 'reactions', JSON.stringify(updatedReactions));
+      //   }
+      // }
+
+      const postIdsWithScores = await this.client.lRange(key, skip, skip + limit - 1);
+      const multi = this.client.multi();
+      for (const postIdWithScore of postIdsWithScores) {
+        const { _id } = JSON.parse(postIdWithScore);
+        multi.HGETALL(`posts:${_id}`);
+      }
+      const replies: PostCacheMultiType = (await multi.exec()) as PostCacheMultiType;
+      const postReplies: IPostDocument[] = [];
+      for (const post of replies as IPostDocument[]) {
+        post.commentsCount = Helpers.parseJson(`${post.commentsCount}`) as number;
+        post.reactions = Helpers.parseJson(`${post.reactions}`) as IReactions;
+        post.createdAt = new Date(Helpers.parseJson(`${post.createdAt}`)) as Date;
+        postReplies.push(post);
+      }
+
+      return postReplies;
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  // public async updatePostforUserInCache(key: string, postId: string, updatedPost: IPostDocument): Promise<void> {
+  //   try {
+  //     if (!this.client.isOpen) {
+  //       await this.client.connect();
+  //     }
+  //     const totalPosts = await this.client.lLen(key);
+  //     for (let i = 0; i < totalPosts; i++) {
+  //       const post = await this.client.lIndex(key, i);
+  //       if (post) {
+  //         const parsedPost = JSON.parse(post);
+  //         if (parsedPost._id === postId) {
+  //           await this.client.lSet(key, i, JSON.stringify(updatedPost));
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   } catch (error) {
+  //     log.error(error);
+  //     throw new ServerError('Server error. Try again.');
+  //   }
+  // }
 
   public async getTotalPostsforUser(key: string): Promise<number> {
     try {
@@ -55,14 +142,28 @@ export class PostCache extends BaseCache {
     }
   }
 
-  public async savePostsforUserToCache(key: string, posts: IPostDocument[]): Promise<void> {
+  // public async savePostsforUserToCache(key: string, posts: IPostDocument[]): Promise<void> {
+  //   try {
+  //     if (!this.client.isOpen) {
+  //       await this.client.connect();
+  //     }
+  //     const serializedPosts = posts.map(post => JSON.stringify(post));
+  //     await this.client.rPush(key, serializedPosts);
+  //     await this.client.expire(key, 1800);
+  //   } catch (error) {
+  //     log.error("Lỗi ở đây", error, key, posts);
+  //     throw new ServerError('Server error. Try again.');
+  //   }
+  // }
+
+  public async savePostsforUserToCache(key: string, posts: { _id: string, score?: number }[]): Promise<void> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-      const serializedPosts = posts.map(post => JSON.stringify(post));
+      const serializedPosts = posts.map(post => JSON.stringify({ _id: post._id, score: post.score }));
       await this.client.rPush(key, serializedPosts);
-      await this.client.expire(key, 1800);
+      await this.client.expire(key, 300); // Đặt TTL là 5 phút (300 giây)
     } catch (error) {
       log.error("Lỗi ở đây", error, key, posts);
       throw new ServerError('Server error. Try again.');
@@ -79,6 +180,7 @@ export class PostCache extends BaseCache {
       avatarColor,
       profilePicture,
       post,
+      htmlPost,
       bgColor,
       feelings,
       privacy,
@@ -93,24 +195,25 @@ export class PostCache extends BaseCache {
     } = createdPost;
 
     const dataToSave = {
-      _id: `${_id}`,
-      userId: `${userId}`,
-      username: `${username}`,
-      email: `${email}`,
-      avatarColor: `${avatarColor}`,
-      profilePicture: `${profilePicture}`,
-      post: `${post}`,
-      bgColor: `${bgColor}`,
-      feelings: `${feelings}`,
-      privacy: `${privacy}`,
-      gifUrl: `${gifUrl}`,
-      commentsCount: `${commentsCount}`,
-      reactions: JSON.stringify(reactions),
-      imgVersion: `${imgVersion}`,
-      imgId: `${imgId}`,
-      videoId: `${videoId}`,
-      videoVersion: `${videoVersion}`,
-      createdAt: `${createdAt}`
+      '_id': `${_id}`,
+      'userId': `${userId}`,
+      'username': `${username}`,
+      'email': `${email}`,
+      'avatarColor': `${avatarColor}`,
+      'profilePicture': `${profilePicture}`,
+      'post': `${post}`,
+      'htmlPost': `${htmlPost}`,
+      'bgColor': `${bgColor}`,
+      'feelings': `${feelings}`,
+      'privacy': `${privacy}`,
+      'gifUrl': `${gifUrl}`,
+      'commentsCount': `${commentsCount}`,
+      'reactions': JSON.stringify(reactions),
+      'imgVersion': `${imgVersion}`,
+      'imgId': `${imgId}`,
+      'videoId': `${videoId}`,
+      'videoVersion': `${videoVersion}`,
+      'createdAt': `${createdAt}`
     };
 
     try {
@@ -360,18 +463,19 @@ export class PostCache extends BaseCache {
   }
 
   public async updatePostInCache(key: string, updatedPost: IPostDocument): Promise<IPostDocument> {
-    const { post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, videoId, videoVersion, profilePicture } = updatedPost;
+    const { htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, videoId, videoVersion, profilePicture } = updatedPost;
     const dataToSave = {
-      post: `${post}`,
-      bgColor: `${bgColor}`,
-      feelings: `${feelings}`,
-      privacy: `${privacy}`,
-      gifUrl: `${gifUrl}`,
-      videoId: `${videoId}`,
-      videoVersion: `${videoVersion}`,
-      profilePicture: `${profilePicture}`,
-      imgVersion: `${imgVersion}`,
-      imgId: `${imgId}`
+      'htmlPost': `${htmlPost}`,
+      'post': `${post}`,
+      'bgColor': `${bgColor}`,
+      'feelings': `${feelings}`,
+      'privacy': `${privacy}`,
+      'gifUrl': `${gifUrl}`,
+      'videoId': `${videoId}`,
+      'videoVersion': `${videoVersion}`,
+      'profilePicture': `${profilePicture}`,
+      'imgVersion': `${imgVersion}`,
+      'imgId': `${imgId}`
     };
 
     try {
@@ -417,12 +521,33 @@ export class PostCache extends BaseCache {
     }
   }
 
+  public async toggleSavedByForPost(postId: string, userId: string): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      const postKey = `posts:${postId}`;
+      const savedBy: string[] = await this.client.HGET(postKey, 'savedBy').then(data => data ? JSON.parse(data) : []);
+      const userIndex = savedBy.indexOf(userId);
+      if (userIndex === -1) {
+        // Nếu userId chưa có trong danh sách, thêm vào
+        savedBy.push(userId);
+      } else {
+        // Nếu userId đã có, xóa khỏi danh sách
+        savedBy.splice(userIndex, 1);
+      }
+      await this.client.HSET(postKey, 'savedBy', JSON.stringify(savedBy));
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
   public async toggleReportPostInCache(userId: string, postId: string): Promise<void> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-
       // Kiểm tra xem bài viết yêu thích đã tồn tại trong cache chưa
       const isReport = await this.client.ZSCORE(`ReportPosts:${userId}`, postId);
       if (isReport) {
@@ -437,6 +562,7 @@ export class PostCache extends BaseCache {
       throw new ServerError('Server error. Try again.');
     }
   }
+
   public async getFavoritePostsFromCache(userId: string): Promise<IPostDocument[]> {
     try {
       if (!this.client.isOpen) {

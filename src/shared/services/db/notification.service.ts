@@ -33,7 +33,8 @@ class NotificationService {
             uId: '$authId.uId'
           }
         }
-      }
+      },
+      { $sort: { createdAt: -1 } }
     ]);
     return notifications;
   }

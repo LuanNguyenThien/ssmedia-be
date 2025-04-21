@@ -44,7 +44,7 @@ class ReactionService {
       const notifications = await notificationModel.insertNotification({
         userFrom: userFrom as string,
         userTo: userTo as string,
-        message: `${username} reacted to your post.`,
+        message: `${username} voted to your post.`,
         notificationType: 'reactions',
         entityId: new mongoose.Types.ObjectId(postId),
         createdItemId: new mongoose.Types.ObjectId(updatedReaction[1]._id!),
@@ -59,7 +59,7 @@ class ReactionService {
       socketIONotificationObject.emit('insert notification', notifications, { userTo });
       const templateParams: INotificationTemplate = {
         username: updatedReaction[0].username!,
-        message: `${username} reacted to your post.`,
+        message: `${username} voted to your post.`,
         header: 'Post Reaction Notification'
       };
       const template: string = notificationTemplate.notificationMessageTemplate(templateParams);

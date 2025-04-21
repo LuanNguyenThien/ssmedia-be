@@ -62,13 +62,18 @@ export class Get {
       const mongoSkip = redisCount;
       const mongoLimit = REDIS_BATCH_SIZE;
       const newPosts = await postService.getPostsforUserByVector(userId, mongoSkip, mongoLimit);
+      
+      if (newPosts.length === 0) {
+        posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
+        totalPosts = redisCount;
+      } else {
+        const formattedPosts = newPosts
+          .map(post => ({ _id: post._id as string, score: post.score as number }));
+        await postCache.savePostsforUserToCache(redisKey, formattedPosts);
 
-      // Lưu bài viết vào Redis
-      await postCache.savePostsforUserToCache(redisKey, newPosts);
-
-      // Lấy lại bài viết từ Redis
-      posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
-      totalPosts = await postService.postsCount();
+        posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
+        totalPosts = await postService.postsCount();
+      }
     }
     res.status(HTTP_STATUS.OK).json({ message: 'All posts', posts, totalPosts });
   }

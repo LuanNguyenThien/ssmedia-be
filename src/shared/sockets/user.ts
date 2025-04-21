@@ -15,8 +15,11 @@ export class SocketIOUserHandler {
 
   public listen(): void {
     this.io.on('connection', (socket: Socket) => {
+      console.log('User socket connected', socket.id);
       socket.on('setup', (data: ILogin) => {
+        console.log('User socket setup', data.userId);
         this.addClientToMap(data.userId, socket.id);
+        console.log('users', users);
         this.addUser(data.userId);
         this.io.emit('user online', users);
       });

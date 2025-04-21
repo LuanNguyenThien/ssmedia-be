@@ -11,13 +11,16 @@ import { followerRoutes } from '@follower/routes/followerRoutes';
 import { notificationRoutes } from '@notification/routes/notificationRoutes';
 import { imageRoutes } from '@image/routes/imageRoutes';
 import { chatRoutes } from '@chat/routes/chatRoutes';
+import { groupChatRoutes } from '@chat/routes/groupchatRoutes';
 import { userRoutes } from '@user/routes/userRoutes';
 import { usersRoutes } from '@users/routes/usersRoutes';
 import { postsRoutes } from '@posts/routes/postsRoutes';
 import { statisticRoutes } from '@statistics/routes/statisticRoutes';
 import { healthRoutes } from '@user/routes/healthRoutes';
+import { searchRoutes } from '@search/routes/searchRoutes';
 import { reportpostRoutes } from '@report-posts/routes/report-postRoutes';
 import { reportprofileRoutes } from '@report-profiles/routes/report-profileRoutes';
+
 const BASE_PATH = '/api/v1';
 const BASE_PATH_ADMIN = '/api/v1/admin';
 
@@ -46,7 +49,9 @@ export default (app: Application) => {
     app.use(BASE_PATH, authMiddleware.verifyUser, notificationRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, imageRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, chatRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, groupChatRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, userRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, searchRoutes.routes());
   };
   routes();
 };
