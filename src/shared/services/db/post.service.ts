@@ -164,8 +164,17 @@ class PostService {
     return mongoPosts;
   }
 
-  public async hidePost(postId: string): Promise<void> {
-    await PostModel.updateOne({ _id: postId }, { $set: { isHidden: true } });
+  public async hidePost(postId: string, reason: string): Promise<IPostDocument | null> {
+    const post = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        isHidden: true,
+        hiddenReason: reason,
+        hiddenAt: new Date()
+      },
+      { new: true }
+    );
+    return post;
   }
 
   public async getHiddenPosts(skip = 0, limit = 10): Promise<IPostDocument[]> {

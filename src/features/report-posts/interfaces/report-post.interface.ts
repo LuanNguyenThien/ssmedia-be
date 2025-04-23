@@ -6,5 +6,7 @@ export interface IReportPostDocument extends Document {
   userId: string;
   postId: string;
   content: string;
+  details: string;
+  status: 'pending' | 'resolved' | 'rejected';
   createdAt: Date;
 }

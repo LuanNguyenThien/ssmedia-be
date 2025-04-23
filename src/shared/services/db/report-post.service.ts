@@ -8,7 +8,7 @@ import { postService } from './post.service';
 class ReportPostService {
   // Thêm bài viết vào danh sách yêu thích
   public async addReportPost(reportPostData: IReportPostDocument): Promise<IReportPostDocument> {
-    const { userId, postId, content } = reportPostData;
+    const { userId, postId, content, details } = reportPostData;
 
     // Kiểm tra xem bài viết đã có trong danh sách yêu thích chưa
     // const existingReport = await ReportPostModel.findOne({ userId, postId });
@@ -23,17 +23,36 @@ class ReportPostService {
     return await ReportPostModel.create(reportPostData);
   }
 
-  public async getReportPosts(skip: number, limit: number): Promise<IPostDocument[]> {
-    const reportPosts: IReportPostDocument[] = await ReportPostModel.find().exec();
+  public async getReportPosts(skip: number, limit: number): Promise<any[]> {
+    const reportPosts: IReportPostDocument[] = await ReportPostModel.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
 
-    const postIds: string[] = reportPosts.map((reportPost) => reportPost.postId);
+    const postIds: ObjectId[] = reportPosts.map((report) => new ObjectId(report.postId));
 
-    const posts: IPostDocument[] = await postService.getPosts({ _id: { $in: postIds } }, skip, limit, { createAt: -1 });
+    const posts: IPostDocument[] = await PostModel.find({ _id: { $in: postIds } }).lean();
 
-    return posts;
+    const postMap = new Map(posts.filter((post) => post._id).map((post) => [post._id!.toString(), post]));
+
+    const combined = reportPosts.map((report) => ({
+      report,
+      post: postMap.get(report.postId.toString()) || null
+    }));
+
+    return combined;
   }
 
-  
+  public async updateReportPostStatus(reportId: string, status: 'pending' | 'reviewed' | 'resolved'): Promise<IReportPostDocument> {
+    if (!reportId) {
+      throw new Error('Missing reportId');
+    }
+
+    const updatedReport = await ReportPostModel.findByIdAndUpdate(reportId, { status }, { new: true });
+
+    if (!updatedReport) {
+      throw new Error(`Report with ID ${reportId} not found`);
+    }
+
+    return updatedReport;
+  }
 }
 
 export const reportPostService: ReportPostService = new ReportPostService();
