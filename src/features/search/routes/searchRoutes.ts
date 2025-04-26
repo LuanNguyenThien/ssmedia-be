@@ -9,6 +9,7 @@ class SearchRoutes {
   }
   public routes(): Router {
     this.router.get('/search/:query', authMiddleware.checkAuthentication, Search.prototype.combinedSearch);
+    this.router.post('/search/image', authMiddleware.checkAuthentication, Search.prototype.combinedSearch);
     return this.router;
   }
 }

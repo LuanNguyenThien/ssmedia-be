@@ -49,6 +49,26 @@ export interface IPostDocument extends Document {
   isHidden?: Boolean;
 }
 
+export interface IPostJobAnalysis {
+  _id?: string | mongoose.Types.ObjectId;
+  post?: string;
+  htmlPost?: string;
+  bgColor?: string;
+  feelings?: string;
+  privacy?: string;
+  gifUrl?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  image?: Blob | string;
+  video?: Blob | string;
+  profilePicture?: string;
+  imgId?: string;
+  imgVersion?: string;
+  videoId?: string;
+  videoVersion?: string;
+  createdAt?: Date;
+}
+
 export interface IGetPostsQuery {
   _id?: ObjectId | string | { $in: string[] };
   username?: string;
@@ -68,7 +88,7 @@ export interface ISavePostToCache {
 
 export interface IPostJobData {
   key?: string;
-  value?: IPostDocument;
+  value?: IPostDocument | IPostJobAnalysis;
   keyOne?: string;
   keyTwo?: string;
 }

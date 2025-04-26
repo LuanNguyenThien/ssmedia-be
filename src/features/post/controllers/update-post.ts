@@ -5,7 +5,7 @@ import { postQueue } from '@service/queues/post.queue';
 import { socketIOPostObject } from '@socket/post';
 import { joiValidation } from '@global/decorators/joi-validation.decorators';
 import { postSchema, postWithImageSchema, postWithVideoSchema } from '@post/schemes/post.schemes';
-import { IPostDocument } from '@post/interfaces/post.interface';
+import { IPostDocument, IPostJobAnalysis } from '@post/interfaces/post.interface';
 import { UploadApiResponse } from 'cloudinary';
 import { uploads, videoUpload } from '@global/helpers/cloudinary-upload';
 import { BadRequestError } from '@global/helpers/error-handler';
@@ -48,9 +48,27 @@ export class Update {
     } as IPostDocument;
 
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
+    const analyzePost = {
+      post: postUpdated.post,
+      htmlPost: postUpdated.htmlPost,
+      image: '',
+      video: '',
+      privacy: postUpdated.privacy,
+      bgColor: postUpdated.bgColor,
+      feelings: postUpdated.feelings,
+      gifUrl: postUpdated.gifUrl,
+      profilePicture: postUpdated.profilePicture,
+      imgId: postUpdated.imgId,
+      imgVersion: postUpdated.imgVersion,
+      videoId: postUpdated.videoId,
+      videoVersion: postUpdated.videoVersion,
+      _id: postUpdated._id,
+      userId: postUpdated.userId,
+      createdAt: postUpdated.createdAt,
+    } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
-    postQueue.addPostJob('analyzePostContent', { value: postUpdated });
+    postQueue.addPostJob('analyzePostContent', { value: analyzePost });
     res.status(HTTP_STATUS.OK).json({ message: 'Post updated successfully' });
   }
 

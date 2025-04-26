@@ -31,7 +31,7 @@ class UserWorker {
         try {
           const user = job.data.value;
           const combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
-          const response = await textServiceAI.vectorizeText(combinedText);
+          const response = await textServiceAI.vectorizeText({ query: combinedText });
           const vectorizedData = response.vector;
           await UserModel.updateOne(
             { _id: key },
