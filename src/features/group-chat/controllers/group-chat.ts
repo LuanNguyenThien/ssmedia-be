@@ -14,25 +14,23 @@ import { groupChatQueue } from '@service/queues/group-chat.queue';
 import { groupChatService } from '@service/db/group-chat.service';
 import { chatQueue } from '@service/queues/chat.queue';
 import { createGroupChatSchema, updateGroupChatSchema, addMembersSchema } from '@root/features/group-chat/schemes/group-chat.schemes';
+import { addImageSchema } from '@image/schemes/images';
 
 const userCache = cache.userCache;
 const messageCache = cache.messageCache;
 const groupMessageCache = cache.groupMessageCache;
 
 export class GroupChat {
+  public async getAllGroupChats(req: Request, res: Response): Promise<void> {
+    const groupChats: IGroupChatDocument[] = await groupChatService.getAllGroupChats();
+    res.status(HTTP_STATUS.OK).json({ message: 'All group chats', groupChats });
+  }
+
   @joiValidation(createGroupChatSchema)
   public async create(req: Request, res: Response): Promise<void> {
     const { name, description, members } = req.body;
-    let groupPicture = '';
 
-    if (req.body.groupPicture) {
-      const result: UploadApiResponse = (await uploads(req.body.groupPicture)) as UploadApiResponse;
-      if (!result?.public_id) {
-        throw new BadRequestError(result.message);
-      }
-      groupPicture = `https://res.cloudinary.com/di6ozapw8/image/upload/v${result.version}/${result.public_id}`;
-    }
-
+    const groupPicture = !req.body.groupPicture ? 'https://www.tenniscall.com/images/chat.jpg' : req.body.groupPicture;
     const membersList: IGroupChatMember[] = [];
 
     const currentUser = await userCache.getUserFromCache(`${req.currentUser!.userId}`);
@@ -87,12 +85,30 @@ export class GroupChat {
 
   public async getGroupChat(req: Request, res: Response): Promise<void> {
     const { groupId } = req.params;
-    const group: IGroupChatDocument = await groupChatService.getGroupChatById(groupId);
+
+    // Try to get group from cache first
+    let group = await groupMessageCache.getGroupChat(groupId);
+
+    // If empty object or incomplete data from cache, get from DB
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+
+      // If group exists in DB but not in cache, update the cache
+      if (group) {
+        await groupMessageCache.updateGroupInfo(groupId, group);
+      }
+    }
+
+    if (!group) {
+      throw new BadRequestError('Group not found');
+    }
+
     res.status(HTTP_STATUS.OK).json({ message: 'Group chat info', group });
   }
 
   public async getUserGroups(req: Request, res: Response): Promise<void> {
-    const userId = req.currentUser!.userId;
+    const { userId } = req.params;
+    // Ideally, we could get this from cache, but for now we'll use the database
     const groups: IGroupChatDocument[] = await groupChatService.getGroupChatByMemberId(userId);
     res.status(HTTP_STATUS.OK).json({ message: 'User group chats', groups });
   }
@@ -102,10 +118,13 @@ export class GroupChat {
     const { groupId } = req.params;
     const { name, description } = req.body;
 
-    // Check if user is admin
-    const group = await groupChatService.getGroupChatById(groupId);
-    if (!group) {
-      throw new BadRequestError('Group not found');
+    // Check if group exists - try cache first
+    let group = await groupMessageCache.getGroupChat(groupId);
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
     }
 
     const currentUserMember = group.members.find((member) => `${member.userId}` === `${req.currentUser!.userId}`);
@@ -133,10 +152,17 @@ export class GroupChat {
       updateData.profilePicture = groupPicture;
     }
 
-    const updatedGroup = await groupChatService.updateGroupChat(groupId, updateData);
+    // Update cache first
+    await groupMessageCache.updateGroupInfo(groupId, updateData);
 
-    // Update cache
-    await groupMessageCache.getGroupChat(groupId); // Refresh cache
+    // Queue job for DB update
+    groupChatQueue.addGroupChatJob('updateGroupInfoInDB', {
+      groupChatId: groupId,
+      updateData
+    });
+
+    // Get updated group from cache
+    const updatedGroup = await groupMessageCache.getGroupChat(groupId);
 
     // Notify members
     socketIOChatObject.emit('group updated', updatedGroup);
@@ -149,10 +175,17 @@ export class GroupChat {
     const { groupId } = req.params;
     const { members } = req.body;
 
-    // Check if group exists
-    const group = await groupChatService.getGroupChatById(groupId);
-    if (!group) {
-      throw new BadRequestError('Group not found');
+    // Check if group exists - try cache first
+    let group = await groupMessageCache.getGroupChat(groupId);
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
+      // Update cache with DB data
+      if (group) {
+        await groupMessageCache.updateGroupInfo(groupId, group);
+      }
     }
 
     // Check if user is admin
@@ -186,49 +219,57 @@ export class GroupChat {
       throw new BadRequestError('No new members to add');
     }
 
-    // Convert userId from string to ObjectId for each new member
-    const newMembersListWithObjectId = newMembersList.map((member) => ({
-      ...member,
-      userId: new ObjectId(member.userId)
-    }));
-
-    // Add members to group
-    const updatedGroup = await groupChatService.addGroupChatMembers(groupId, newMembersListWithObjectId);
-
-    // Update cache and add to members' chat lists
+    // Update cache first for immediate feedback
     for (const member of newMembersList) {
+      await groupMessageCache.addMemberToGroup(groupId, member);
       await messageCache.addChatListToCache(member.userId, groupId, groupId, 'group');
     }
+
+    // Convert userId from string to ObjectId for each new member (for DB operations)
+    const newMembersListWithObjectId = newMembersList.map((member) => ({
+      ...member,
+      userId: member.userId
+    }));
 
     // Queue job for DB update
     groupChatQueue.addGroupChatJob('addMembersGroupChat', {
       groupChatId: groupId,
-      groupChatMembers: newMembersList
+      groupChatMembers: newMembersListWithObjectId
     });
+
+    // Fetch the updated group from cache to confirm changes are reflected
+    const updatedGroup = await groupMessageCache.getGroupChat(groupId);
 
     // Notify all members
     socketIOChatObject.emit('group members added', {
       groupId,
-      newMembers: newMembersList
+      newMembers: newMembersList,
+      group: updatedGroup
     });
 
     res.status(HTTP_STATUS.OK).json({
       message: 'Members added to group successfully',
-      newMembers: newMembersList
+      newMembers: newMembersList,
+      group: updatedGroup
     });
   }
 
   public async removeMember(req: Request, res: Response): Promise<void> {
     const { groupId, memberId } = req.params;
 
-    // Check if group exists
-    const group = await groupChatService.getGroupChatById(groupId);
-    if (!group) {
-      throw new BadRequestError('Group not found');
+    // Get group from cache or DB
+    let group = await groupMessageCache.getGroupChat(groupId);
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
     }
 
     // Check if current user is admin or the user removing themselves
-    const isCurrentUserAdmin = group.members.some((member) => `${member.userId}` === `${req.currentUser!.userId}` && member.role === 'admin');
+    const isCurrentUserAdmin = group.members.some(
+      (member) => `${member.userId}` === `${req.currentUser!.userId}` && member.role === 'admin'
+    );
     const isSelfRemoval = memberId === req.currentUser!.userId;
 
     if (!isCurrentUserAdmin && !isSelfRemoval) {
@@ -250,11 +291,14 @@ export class GroupChat {
       }
     }
 
-    // Remove member
-    const updatedGroup = await groupChatService.removeGroupChatMember(groupId, memberId);
+    // Update cache first
+    await groupMessageCache.removeMemberFromGroup(groupId, memberId);
 
-    // Remove group from member's chat list
-    // TODO: When implementing in redis cache, add method to remove group from user's chat list
+    // Queue job for DB update
+    groupChatQueue.addGroupChatJob('removeGroupMemberInDB', {
+      groupChatId: groupId,
+      userId: memberId
+    });
 
     // Send notifications
     socketIOChatObject.emit('group member removed', {
@@ -297,14 +341,19 @@ export class GroupChat {
   public async promoteToAdmin(req: Request, res: Response): Promise<void> {
     const { groupId, memberId } = req.params;
 
-    // Check if group exists
-    const group = await groupChatService.getGroupChatById(groupId);
-    if (!group) {
-      throw new BadRequestError('Group not found');
+    // Get group from cache or DB
+    let group = await groupMessageCache.getGroupChat(groupId);
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
     }
 
     // Check if current user is admin
-    const isCurrentUserAdmin = group.members.some((member) => `${member.userId}` === `${req.currentUser!.userId}` && member.role === 'admin');
+    const isCurrentUserAdmin = group.members.some(
+      (member) => `${member.userId}` === `${req.currentUser!.userId}` && member.role === 'admin'
+    );
 
     if (!isCurrentUserAdmin) {
       throw new BadRequestError('Only admins can promote members');
@@ -320,9 +369,15 @@ export class GroupChat {
       throw new BadRequestError('Member is already an admin');
     }
 
-    // Update member role to admin
-    memberToPromote.role = 'admin';
-    await groupChatService.updateGroupChat(groupId, { members: group.members });
+    // Update cache first
+    await groupMessageCache.updateMemberRole(groupId, memberId, 'admin');
+
+    // Queue job for DB update
+    groupChatQueue.addGroupChatJob('updateMemberRoleInDB', {
+      groupChatId: groupId,
+      userId: memberId,
+      role: 'admin'
+    });
 
     // Notify members
     socketIOChatObject.emit('group member promoted', {
@@ -366,23 +421,31 @@ export class GroupChat {
   public async deleteGroup(req: Request, res: Response): Promise<void> {
     const { groupId } = req.params;
 
-    // Check if group exists
-    const group = await groupChatService.getGroupChatById(groupId);
-    if (!group) {
-      throw new BadRequestError('Group not found');
+    // Get group from cache or DB
+    let group = await groupMessageCache.getGroupChat(groupId);
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
     }
 
     // Check if current user is admin
-    const isCurrentUserAdmin = group.members.some((member) => `${member.userId}` === `${req.currentUser!.userId}` && member.role === 'admin');
+    const isCurrentUserAdmin = group.members.some(
+      (member) => `${member.userId}` === `${req.currentUser!.userId}` && member.role === 'admin'
+    );
 
     if (!isCurrentUserAdmin) {
       throw new BadRequestError('Only admins can delete the group');
     }
 
-    // Delete group
-    await groupChatService.deleteGroupChat(groupId);
+    // Delete from cache first
+    await groupMessageCache.deleteGroupFromCache(groupId);
 
-    // TODO: When implementing redis cache, add method to remove group from all members' chat lists
+    // Queue job for DB delete
+    groupChatQueue.addGroupChatJob('deleteGroupInDB', {
+      groupChatId: groupId
+    });
 
     // Notify members
     socketIOChatObject.emit('group deleted', {
@@ -393,5 +456,314 @@ export class GroupChat {
     res.status(HTTP_STATUS.OK).json({
       message: 'Group deleted successfully'
     });
+  }
+
+  public async getUserPendingInvitations(req: Request, res: Response): Promise<void> {
+    const userId = req.currentUser!.userId;
+    try {
+      // 1. Try to get pending group IDs from cache
+      let pendingGroupIds: string[] | null = null;
+      let pendingGroups: IGroupChatDocument[] = [];
+
+      console.time('getUserPendingInvitations');
+      try {
+        pendingGroupIds = await groupMessageCache.getUserPendingGroups(userId);
+      } catch (cacheError) {
+        pendingGroupIds = null;
+      }
+      console.timeEnd('getUserPendingInvitations');
+
+      // 2. If we have group IDs from cache, get group details
+      console.time('getGroupDetailsFromCacheOrDB');
+      if (pendingGroupIds && pendingGroupIds.length) {
+        const groupPromises = pendingGroupIds.map(async (groupId) => {
+          // Try cache first, fallback to DB
+          try {
+            const group = await groupMessageCache.getGroupChat(groupId);
+            if (group && Object.keys(group).length) return group;
+          } catch {
+            // Cache error, fallback to DB
+          }
+          return await groupChatService.getGroupChatById(groupId);
+        });
+        pendingGroups = (await Promise.all(groupPromises)).filter(Boolean);
+      }
+      console.timeEnd('getGroupDetailsFromCacheOrDB');
+
+      // 3. If no results from cache, fallback to DB for all
+      if (!pendingGroups.length) {
+        pendingGroups = await groupChatService.getUserPendingGroups(userId);
+      }
+
+      // 4. Return result
+      res.status(HTTP_STATUS.OK).json({
+        message: 'User pending group invitations',
+        pendingGroups
+      });
+    } catch {
+      throw new BadRequestError('Failed to get pending invitations');
+    }
+  }
+
+  public async acceptGroupInvitation(req: Request, res: Response): Promise<void> {
+    const { groupId } = req.params;
+    const userId = req.currentUser!.userId;
+
+    // Get group from cache or DB
+    let group = await groupMessageCache.getGroupChat(groupId);
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
+    }
+
+    // Check if user is in the group with pending state
+    const memberIndex = group.members.findIndex((member) => `${member.userId}` === `${userId}` && member.state === 'pending');
+
+    if (memberIndex === -1) {
+      throw new BadRequestError('No pending invitation found for this group');
+    }
+
+    // Update member state to accepted in cache
+    await groupMessageCache.updateMemberState(groupId, userId, 'accepted');
+
+    // Queue job to update DB
+    groupChatQueue.addGroupChatJob('updateMemberStateInDB', {
+      groupChatId: groupId,
+      userId,
+      state: 'accepted'
+    });
+
+    // Add system message about member accepting invitation
+    const memberUsername = group.members[memberIndex].username;
+    const messageData: IMessageData = {
+      _id: `${new mongoose.Types.ObjectId()}`,
+      conversationId: undefined,
+      receiverId: undefined,
+      receiverUsername: undefined,
+      receiverAvatarColor: undefined,
+      receiverProfilePicture: undefined,
+      senderUsername: 'System',
+      senderId: 'system',
+      senderAvatarColor: '#000000',
+      senderProfilePicture: '',
+      body: `${memberUsername} joined the group`,
+      isRead: true,
+      gifUrl: '',
+      selectedImage: '',
+      reaction: [],
+      createdAt: new Date(),
+      deleteForMe: false,
+      deleteForEveryone: false,
+      isGroupChat: true,
+      groupId: groupId
+    };
+
+    await groupMessageCache.addGroupChatMessageToCache(groupId, messageData);
+    chatQueue.addChatJob('addChatMessageToDB', messageData);
+
+    // Notify all members
+    socketIOChatObject.emit('group invitation accepted', {
+      groupId,
+      userId,
+      username: memberUsername
+    });
+
+    res.status(HTTP_STATUS.OK).json({
+      message: 'Group invitation accepted successfully'
+    });
+  }
+
+  public async declineGroupInvitation(req: Request, res: Response): Promise<void> {
+    const { groupId } = req.params;
+    const userId = req.currentUser!.userId;
+
+    // Get group from cache or DB
+    let group = await groupMessageCache.getGroupChat(groupId);
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
+    }
+
+    // Check if user is in the group with pending state
+    const memberIndex = group.members.findIndex((member) => `${member.userId}` === `${userId}` && member.state === 'pending');
+
+    if (memberIndex === -1) {
+      throw new BadRequestError('No pending invitation found for this group');
+    }
+
+    // Update member state to declined in cache
+    await groupMessageCache.updateMemberState(groupId, userId, 'declined');
+
+    // Queue job to update DB
+    groupChatQueue.addGroupChatJob('updateMemberStateInDB', {
+      groupChatId: groupId,
+      userId,
+      state: 'declined'
+    });
+
+    // Notify admins
+    const adminMembers = group.members.filter((member) => member.role === 'admin');
+    socketIOChatObject.emit('group invitation declined', {
+      groupId,
+      userId,
+      username: group.members[memberIndex].username,
+      admins: adminMembers.map((admin) => admin.userId)
+    });
+
+    res.status(HTTP_STATUS.OK).json({
+      message: 'Group invitation declined successfully'
+    });
+  }
+
+  public async leaveGroup(req: Request, res: Response): Promise<void> {
+    const { groupId } = req.params;
+    const userId = req.currentUser!.userId;
+
+    // Get group from cache or DB
+    let group = await groupMessageCache.getGroupChat(groupId);
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
+    }
+
+    // Check if user is a member of the group
+    const memberIndex = group.members.findIndex((member) => `${member.userId}` === userId);
+    if (memberIndex === -1) {
+      throw new BadRequestError('You are not a member of this group');
+    }
+
+    const memberToRemove = group.members[memberIndex];
+
+    // Check if user is the only admin
+    if (memberToRemove.role === 'admin') {
+      const adminCount = group.members.filter((member) => member.role === 'admin').length;
+      if (adminCount === 1) {
+        throw new BadRequestError(
+          'As the only admin, you cannot leave the group. Please promote another member to admin first or delete the group.'
+        );
+      }
+    }
+
+    // Update cache
+    await groupMessageCache.removeMemberFromGroup(groupId, userId);
+
+    // Queue job to update DB
+    groupChatQueue.addGroupChatJob('removeGroupMemberInDB', {
+      groupChatId: groupId,
+      userId
+    });
+
+    // Add system message about member leaving
+    const messageData: IMessageData = {
+      _id: `${new mongoose.Types.ObjectId()}`,
+      conversationId: undefined,
+      receiverId: undefined,
+      receiverUsername: undefined,
+      receiverAvatarColor: undefined,
+      receiverProfilePicture: undefined,
+      senderUsername: 'System',
+      senderId: 'system',
+      senderAvatarColor: '#000000',
+      senderProfilePicture: '',
+      body: `${memberToRemove.username} left the group`,
+      isRead: true,
+      gifUrl: '',
+      selectedImage: '',
+      reaction: [],
+      createdAt: new Date(),
+      deleteForMe: false,
+      deleteForEveryone: false,
+      isGroupChat: true,
+      groupId: groupId
+    };
+
+    await groupMessageCache.addGroupChatMessageToCache(groupId, messageData);
+    chatQueue.addChatJob('addChatMessageToDB', messageData);
+
+    // Notify members
+    socketIOChatObject.emit('group member left', {
+      groupId,
+      userId,
+      username: memberToRemove.username
+    });
+
+    res.status(HTTP_STATUS.OK).json({
+      message: 'You have left the group successfully'
+    });
+  }
+
+  @joiValidation(addImageSchema)
+  public async updateGroupAvatar(req: Request, res: Response): Promise<void> {
+    const { groupId } = req.params;
+
+    // Check if group exists
+    const group = await groupChatService.getGroupChatById(groupId);
+    if (!group) {
+      throw new BadRequestError('Group not found');
+    }
+
+    // Check if user is a member of the group
+    const currentUserMember = group.members.find((member) => `${member.userId}` === `${req.currentUser!.userId}`);
+    if (!currentUserMember) {
+      throw new BadRequestError('You are not a member of this group');
+    }
+
+    // Only admin can update group avatar
+    if (currentUserMember.role !== 'admin') {
+      throw new BadRequestError('Only admins can update group avatar');
+    }
+
+    const result: UploadApiResponse = (await uploads(req.body.image, groupId, true, true)) as UploadApiResponse;
+    if (!result?.public_id) {
+      throw new BadRequestError('File upload: Error occurred. Try again.');
+    }
+
+    const url = `https://res.cloudinary.com/di6ozapw8/image/upload/v${result.version}/${result.public_id}?t=${new Date().getTime()}`;
+
+    // Update group avatar in cache
+    await groupMessageCache.updateGroupAvatar(groupId, url);
+
+    // Notify members of group avatar change
+    socketIOChatObject.emit('group avatar updated', {
+      groupId,
+      avatar: url
+    });
+
+    // Queue job to update database
+    groupChatQueue.addGroupChatJob('updateGroupAvatarInDB', {
+      groupChatId: groupId,
+      avatar: url,
+      imgId: result.public_id,
+      imgVersion: result.version.toString()
+    });
+
+    res.status(HTTP_STATUS.OK).json({ message: 'Group avatar updated successfully' });
+  }
+
+  public async checkUserInGroup(req: Request, res: Response): Promise<void> {
+    const { groupId, userId } = req.params;
+    // Try to get group from cache first
+    let group = await groupMessageCache.getGroupChat(groupId);
+
+    // If not in cache or incomplete data, get from DB
+    if (!group || !Object.keys(group).length) {
+      group = await groupChatService.getGroupChatById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
+      await groupMessageCache.updateGroupInfo(groupId, group);
+    }
+
+    const member = group.members.find((m) => `${m.userId}` === `${userId}`);
+    if (!member) {
+      throw new BadRequestError('You are not a member of this group');
+    }
+    res.status(HTTP_STATUS.OK).json({ message: 'User is a member of the group', group, member });
   }
 }

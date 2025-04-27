@@ -21,6 +21,13 @@ export class SocketIOChatHandler {
         socket.join(roomId);
         // socket.join(receiverSocketId);
       });
+      
+      // Add reference to the socket for retrieving user's socket ID
+      socket.on('setup', (userId: string) => {
+        connectedUsersMap.set(userId, socket.id);
+        socket.join(userId);
+        console.log('User connected. UserId:', userId);
+      });
     });
   }
 }

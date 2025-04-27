@@ -1,7 +1,13 @@
 import { IGroupChatDocument, IGroupChatMemberDocument } from '@root/features/group-chat/interfaces/group-chat.interface';
 import { GroupChatModel } from '@root/features/group-chat/models/group-chat.schema';
+import mongoose from 'mongoose';
 
 class GroupChatService {
+  public async getAllGroupChats(): Promise<IGroupChatDocument[]> {
+    const groupChats: IGroupChatDocument[] = await GroupChatModel.find({}).exec();
+    return groupChats;
+  }
+
   public async createGroupChat(data: IGroupChatDocument): Promise<IGroupChatDocument> {
     const groupChat: IGroupChatDocument = await GroupChatModel.create(data);
     return groupChat;
@@ -9,6 +15,7 @@ class GroupChatService {
 
   public async getGroupChatById(groupId: string): Promise<IGroupChatDocument> {
     const groupChat: IGroupChatDocument = (await GroupChatModel.findOne({ _id: groupId }).exec()) as IGroupChatDocument;
+    console.info('Fetching group chat with ID:', groupId, 'Result:', groupChat);
     return groupChat;
   }
 
@@ -61,6 +68,7 @@ class GroupChatService {
 
   public async addGroupChatMembers(groupId: string, newMembers: IGroupChatMemberDocument[]): Promise<IGroupChatDocument> {
     const group = await this.getGroupChatById(groupId);
+    console.info('Adding members to group chat:', groupId, 'with new members:', newMembers);
     if (!group) {
       throw new Error('Group chat not found');
     }
@@ -130,6 +138,45 @@ class GroupChatService {
 
   public async deleteGroupChat(groupId: string): Promise<void> {
     await GroupChatModel.deleteOne({ _id: groupId }).exec();
+  }
+
+  public async getUserPendingGroups(userId: string): Promise<IGroupChatDocument[]> {
+    try {
+      // Convert string ID to ObjectId
+      const objectId = new mongoose.Types.ObjectId(userId);
+
+      const pendingGroups: IGroupChatDocument[] = await GroupChatModel.find({
+        members: {
+          $elemMatch: {
+            userId: objectId,
+            state: 'pending'
+          }
+        }
+      }).exec();
+      return pendingGroups;
+    } catch (error) {
+      console.error('Error in getUserPendingGroups:', error);
+      return [];
+    }
+  }
+
+  public async updateMemberState(groupId: string, userId: string, state: string): Promise<IGroupChatDocument> {
+    const groupChat: IGroupChatDocument = (await GroupChatModel.findOneAndUpdate(
+      {
+        _id: groupId,
+        'members.userId': userId
+      },
+      {
+        $set: { 'members.$.state': state }
+      },
+      { new: true }
+    ).exec()) as IGroupChatDocument;
+
+    if (!groupChat) {
+      throw new Error('Group chat not found or member does not exist');
+    }
+
+    return groupChat;
   }
 }
 

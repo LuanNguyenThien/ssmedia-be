@@ -9,9 +9,12 @@ class GroupChatQueue extends BaseQueue {
     this.processJob('createGroupChat', 5, groupChatWorker.createGroupChatToDB);
     this.processJob('addMemberGroupChat', 5, groupChatWorker.addGroupChatMemberToDB);
     this.processJob('addMembersGroupChat', 5, groupChatWorker.addGroupChatMembersToDB);
-    // this.processJob('addMessageToGroupChat', 5, groupChatWorker.addMessageToGroupChat);
-    // this.processJob('updateGroupChat', 5, groupChatWorker.updateGroupChatToDB);
-    // this.processJob('deleteGroupChat', 5, groupChatWorker.deleteGroupChat);
+    this.processJob('updateGroupAvatarInDB', 5, groupChatWorker.updateGroupAvatarInDB);
+    this.processJob('updateGroupInfoInDB', 5, groupChatWorker.updateGroupInfoInDB);
+    this.processJob('removeGroupMemberInDB', 5, groupChatWorker.removeGroupMemberInDB);
+    this.processJob('updateMemberStateInDB', 5, groupChatWorker.updateMemberStateInDB);
+    this.processJob('updateMemberRoleInDB', 5, groupChatWorker.updateMemberRoleInDB);
+    this.processJob('deleteGroupInDB', 5, groupChatWorker.deleteGroupInDB);
   }
 
   public static getInstance(): GroupChatQueue {

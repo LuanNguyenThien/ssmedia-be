@@ -32,7 +32,7 @@ const memberSchema = new Schema(
     state: {
       type: String,
       enum: {
-        values: ['pending', 'accepted'],
+        values: ['pending', 'accepted', 'declined'],
         message: '{VALUE} is not a valid state'
       },
       default: 'pending'

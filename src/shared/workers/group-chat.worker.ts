@@ -2,6 +2,8 @@ import { DoneCallback, Job } from 'bull';
 import Logger from 'bunyan';
 import { config } from '@root/config';
 import { groupChatService } from '@service/db/group-chat.service';
+import { IGroupChat, IGroupChatJob, IGroupChatMember, IGroupChatMemberDocument } from '@root/features/group-chat/interfaces/group-chat.interface';
+import { imageService } from '@service/db/image.service';
 
 const log: Logger = config.createLogger('group-chatWorker');
 
@@ -16,6 +18,7 @@ class GroupChatWorker {
       done(error as Error);
     }
   }
+
   async addGroupChatMemberToDB(job: Job, done: DoneCallback): Promise<void> {
     try {
       const { groupChatId, groupChatMember } = job.data;
@@ -27,6 +30,7 @@ class GroupChatWorker {
       done(error as Error);
     }
   }
+
   async addGroupChatMembersToDB(job: Job, done: DoneCallback): Promise<void> {
     try {
       const { groupChatId, groupChatMembers } = job.data;
@@ -36,6 +40,68 @@ class GroupChatWorker {
     } catch (error) {
       log.error(error);
       done(error as Error);
+    }
+  }
+
+  async updateGroupAvatarInDB(job: Job): Promise<void> {
+    try {
+      const { groupChatId, avatar, imgId, imgVersion } = job.data;
+
+      // Update the group avatar in database
+      await groupChatService.updateGroupChat(groupChatId, { profilePicture: avatar });
+
+      // Store the avatar image in the image collection
+      await imageService.addGroupAvatarImageToDB(groupChatId, avatar, imgId, imgVersion);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async updateGroupInfoInDB(job: Job): Promise<void> {
+    try {
+      const { groupChatId, updateData } = job.data;
+      await groupChatService.updateGroupChat(groupChatId, updateData);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async removeGroupMemberInDB(job: Job): Promise<void> {
+    try {
+      const { groupChatId, userId } = job.data;
+      await groupChatService.removeGroupChatMember(groupChatId, userId);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async updateMemberStateInDB(job: Job): Promise<void> {
+    try {
+      const { groupChatId, userId, state } = job.data;
+      await groupChatService.updateMemberState(groupChatId, userId, state);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async updateMemberRoleInDB(job: Job): Promise<void> {
+    try {
+      const { groupChatId, userId, role } = job.data;
+      // Assuming there's a method to update a member's role in the service
+      await groupChatService.updateGroupChat(groupChatId, {
+        members: [{ userId, role } as IGroupChatMemberDocument]
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async deleteGroupInDB(job: Job): Promise<void> {
+    try {
+      const { groupChatId } = job.data;
+      await groupChatService.deleteGroupChat(groupChatId);
+    } catch (error) {
+      console.log(error);
     }
   }
 }

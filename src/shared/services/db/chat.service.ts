@@ -49,8 +49,25 @@ class ChatService {
   }
 
   public async getUserConversationList(userId: ObjectId): Promise<IMessageData[]> {
-    // Bước 1: Lấy danh sách nhóm mà user tham gia
-    const groupChats = await GroupChatModel.find({ 'members.userId': userId })
+    // First, fetch ALL groups in the system to check against orphaned messages
+    const allGroups = await GroupChatModel.find().select('_id').lean();
+    const allGroupIds = allGroups.map(g => g._id);
+    
+    // Delete messages that reference non-existent groups
+    await MessageModel.deleteMany({
+      isGroupChat: true,
+      groupId: { $exists: true, $ne: null, $nin: allGroupIds }
+    }).exec();
+    
+    // Now continue with fetching user-specific groups
+    const groupChats = await GroupChatModel.find({
+      'members': {
+        $elemMatch: {
+          'userId': userId,
+          'state': 'accepted'
+        }
+      }
+    })
       .select('_id name profilePicture createdAt');
 
     if (!groupChats.length && !(await MessageModel.exists({ $or: [{ senderId: userId }, { receiverId: userId }] }))) {
@@ -58,7 +75,7 @@ class ChatService {
     }
 
     const groupIds = groupChats.map(g => g._id);
-
+    
     // Bước 2: Lấy danh sách groupId có tin nhắn
     const groupIdsWithMessages = new Set(
       (await MessageModel.distinct('groupId', {
@@ -161,7 +178,7 @@ class ChatService {
     return chatList;
   }
 
-  public async getMessages(senderId: ObjectId, receiverIdOrGroupId: ObjectId, sort: Record<string, 1 | -1>, isGroupChat: boolean = false): Promise<IMessageData[]> {
+  public async getMessages(senderId: ObjectId, receiverIdOrGroupId: ObjectId, sort: Record<string, 1 | -1>, isGroupChat = false): Promise<IMessageData[]> {
     const query = isGroupChat
     ? { groupId: receiverIdOrGroupId, isGroupChat: true }
     : {
