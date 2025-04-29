@@ -48,4 +48,19 @@ export class getUser {
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to retrieve banned users' });
     }
   }
+
+  public async getNewUsersToday(req: Request, res: Response): Promise<void> {
+    try {
+      const count = await userService.countNewUsersToday();
+      res.status(HTTP_STATUS.OK).json({
+        message: 'Successfully retrieved the count of new users today',
+        count
+      });
+    } catch (error) {
+      console.error('Error retrieving the count of new users today:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: 'Server error while retrieving the count of new users today'
+      });
+    }
+  }
 }
