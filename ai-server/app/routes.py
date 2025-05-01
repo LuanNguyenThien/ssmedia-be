@@ -15,11 +15,17 @@ async def analyze_post(request: AnalyzeRequest):
     try:
         value = request.value
         content = value['post']
-        image = None
-        video = None
-        if value['image'] != '':
-            image = value['image']
-        elif value['imgId'] != '' and value['imgVersion'] != '':
+
+        image_urls = []
+        video_urls = []
+        audio_urls = []
+        mediaItems = value.get('mediaItems', None)
+        if mediaItems is not None:
+            image_urls = mediaItems.get('images', [])
+            video_urls = mediaItems.get('videos', [])
+            audio_urls = mediaItems.get('audios', [])
+
+        if value['imgId'] != '' and value['imgVersion'] != '':
             # Clean the version and id strings by removing any quotes
             img_id = value['imgId'].replace("'", "").replace('"', '')
             img_version = value['imgVersion'].replace("'", "").replace('"', '')
@@ -29,11 +35,21 @@ async def analyze_post(request: AnalyzeRequest):
             
             # Create the Cloudinary URL
             url = f"https://res.cloudinary.com/di6ozapw8/image/upload/v{version}/{img_id}"
-            image = url
-        if value['video'] != '':
-            video = value['video']
+            image_urls = url
+
+        if value['videoId'] != '' and value['videoVersion'] != '':
+            # Clean the version and id strings by removing any quotes
+            video_id = value['videoId'].replace("'", "").replace('"', '')
+            video_version = value['videoVersion'].replace("'", "").replace('"', '')
+            
+            # Extract the version number from the full version string
+            version = video_version.split('/')[0]
+            
+            # Create the Cloudinary URL
+            url = f"https://res.cloudinary.com/di6ozapw8/video/upload/v{version}/{video_id}"
+            video_urls = url
         id = value['_id']
-        result = await analyze_content(content, id, image)  # Gọi hàm phân tích nội dung
+        result = await analyze_content(content, id, image_urls, video_urls, audio_urls)  # Gọi hàm phân tích nội dung
         return JSONResponse(content=result)
     except Exception as e:
         print("Error:", str(e))
