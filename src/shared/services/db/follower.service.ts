@@ -57,10 +57,12 @@ class FollowerService {
         createdAt: new Date(),
         comment: '',
         post: '',
+        htmlPost: '',
         imgId: '',
         imgVersion: '',
         gifUrl: '',
-        reaction: ''
+        reaction: '',
+        post_analysis: ''
       });
       socketIONotificationObject.emit('insert notification', notifications, { userTo: followeeId });
       const templateParams: INotificationTemplate = {

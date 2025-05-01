@@ -51,10 +51,12 @@ class ReactionService {
         createdAt: new Date(),
         comment: '',
         post: updatedReaction[2].post,
+        htmlPost: updatedReaction[2].htmlPost!,
         imgId: updatedReaction[2].imgId!,
         imgVersion: updatedReaction[2].imgVersion!,
         gifUrl: updatedReaction[2].gifUrl!,
-        reaction: type!
+        reaction: type!,
+        post_analysis: ''
       });
       socketIONotificationObject.emit('insert notification', notifications, { userTo });
       const templateParams: INotificationTemplate = {

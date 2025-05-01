@@ -39,10 +39,12 @@ class CommentService {
         createdAt: new Date(),
         comment: comment.comment,
         post: response[1].post,
+        htmlPost: response[1].htmlPost!,
         imgId: response[1].imgId!,
         imgVersion: response[1].imgVersion!,
         gifUrl: response[1].gifUrl!,
-        reaction: ''
+        reaction: '',
+        post_analysis: ''
       });
       socketIONotificationObject.emit('insert notification', notifications, { userTo });
       const templateParams: INotificationTemplate = {
