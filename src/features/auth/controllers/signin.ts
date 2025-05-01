@@ -47,4 +47,12 @@ export class SignIn {
     } as IUserDocument;
     res.status(HTTP_STATUS.OK).json({ message: 'User login successfully', user: userDocument, token: userJwt });
   }
+
+  public async checkBanStatus(req: Request, res: Response): Promise<void> {
+    const { authId } = req.body; 
+    
+    const isBanned = await authService.isUserBanned(authId);
+
+    res.status(HTTP_STATUS.OK).json({ isBanned });
+  }
 }

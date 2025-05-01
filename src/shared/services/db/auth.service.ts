@@ -42,6 +42,11 @@ class AuthService {
     }).exec()) as IAuthDocument;
     return user;
   }
+
+  public async isUserBanned(authId: string): Promise<boolean> {
+    const user = await AuthModel.findById(authId).select('isBanned').exec();
+    return user?.isBanned ?? false;
+  }
 }
 
 export const authService: AuthService = new AuthService();

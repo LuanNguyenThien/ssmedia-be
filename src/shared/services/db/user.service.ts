@@ -198,6 +198,7 @@ class UserService {
       email: '$authId.email',
       avatarColor: '$authId.avatarColor',
       createdAt: '$authId.createdAt',
+      role: '$authId.role',
       postsCount: 1,
       work: 1,
       school: 1,
