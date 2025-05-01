@@ -57,10 +57,6 @@ export interface IPostJobAnalysis {
   feelings?: string;
   privacy?: string;
   gifUrl?: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  image?: Blob | string;
-  video?: Blob | string;
   profilePicture?: string;
   imgId?: string;
   imgVersion?: string;

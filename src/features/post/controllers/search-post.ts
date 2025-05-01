@@ -13,7 +13,7 @@ export class Search {
     const search = req.params.query;
     try {
       // Gửi truy vấn đến server Python để vector hóa
-      const response = await textServiceAI.vectorizeText(search);
+      const response = await textServiceAI.vectorizeText({ search });
       const queryVector = response.vector;
 
       // Thực hiện tìm kiếm trong MongoDB sử dụng vector

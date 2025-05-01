@@ -10,7 +10,9 @@ import { UploadApiResponse } from 'cloudinary';
 import { uploads, videoUpload } from '@global/helpers/cloudinary-upload';
 import { BadRequestError } from '@global/helpers/error-handler';
 import { imageQueue } from '@service/queues/image.queue';
+import { mediaQueue } from '@service/queues/media.queue';
 import { cache } from '@service/redis/cache';
+import { ObjectId } from 'mongodb';
 
 // const postCache: PostCache = new PostCache();
 const postCache = cache.postCache;
@@ -19,7 +21,18 @@ export class Update {
   public async serverUpdatePost(postId: string, updatedPost: IPostDocument): Promise<IPostDocument> {
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
     socketIOPostObject.emit('update post', postUpdated, 'posts');
-    postQueue.addPostJob('updatePostInDB', { key: postId, value: updatedPost });
+    const updatePostInDB = await postQueue.addPostJob('updatePostInDB', { key: postId, value: updatedPost });
+    if (postUpdated.htmlPost && postUpdated.htmlPost.includes('tmpfiles.org/dl/')) {
+          // Thêm job xử lý media
+          mediaQueue.addMediaJob('processPostMedia', {
+            postId: new ObjectId(postId),
+            htmlPost: postUpdated.htmlPost,
+            userId: postUpdated.userId,
+          }, {
+            dependencies: [updatePostInDB.id]
+          } as any);
+        }
+    
     return postUpdated;
   }
 
@@ -51,8 +64,6 @@ export class Update {
     const analyzePost = {
       post: postUpdated.post,
       htmlPost: postUpdated.htmlPost,
-      image: '',
-      video: '',
       privacy: postUpdated.privacy,
       bgColor: postUpdated.bgColor,
       feelings: postUpdated.feelings,
@@ -117,8 +128,25 @@ export class Update {
     } as IPostDocument;
 
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
+    const analyzePost = {
+      post: postUpdated.post,
+      htmlPost: postUpdated.htmlPost,
+      privacy: postUpdated.privacy,
+      bgColor: postUpdated.bgColor,
+      feelings: postUpdated.feelings,
+      gifUrl: postUpdated.gifUrl,
+      profilePicture: postUpdated.profilePicture,
+      imgId: postUpdated.imgId,
+      imgVersion: postUpdated.imgVersion,
+      videoId: postUpdated.videoId,
+      videoVersion: postUpdated.videoVersion,
+      _id: postUpdated._id,
+      userId: postUpdated.userId,
+      createdAt: postUpdated.createdAt,
+    } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
+    postQueue.addPostJob('analyzePostContent', { value: analyzePost });
   }
 
   private async addImageToExistingPost(req: Request): Promise<UploadApiResponse> {
@@ -149,8 +177,25 @@ export class Update {
     } as IPostDocument;
 
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
+    const analyzePost = {
+      post: postUpdated.post,
+      htmlPost: postUpdated.htmlPost,
+      privacy: postUpdated.privacy,
+      bgColor: postUpdated.bgColor,
+      feelings: postUpdated.feelings,
+      gifUrl: postUpdated.gifUrl,
+      profilePicture: postUpdated.profilePicture,
+      imgId: postUpdated.imgId,
+      imgVersion: postUpdated.imgVersion,
+      videoId: postUpdated.videoId,
+      videoVersion: postUpdated.videoVersion,
+      _id: postUpdated._id,
+      userId: postUpdated.userId,
+      createdAt: postUpdated.createdAt,
+    } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
+    postQueue.addPostJob('analyzePostContent', { value: analyzePost });
     if (image) {
       imageQueue.addImageJob('addImageToDB', {
         key: `${req.currentUser!.userId}`,

@@ -1,6 +1,7 @@
 import { IPostJobData } from '@post/interfaces/post.interface';
 import { BaseQueue } from '@service/queues/base.queue';
 import { postWorker } from '@worker/post.worker';
+import { Job } from 'bull';
 
 class PostQueue extends BaseQueue {
   private static instance: PostQueue;
@@ -19,8 +20,8 @@ class PostQueue extends BaseQueue {
     return PostQueue.instance;
   }
 
-  public addPostJob(name: string, data: IPostJobData): void {
-    this.addJob(name, data);
+  public addPostJob(name: string, data: IPostJobData): Promise<Job> {
+    return this.addJob(name, data);
   }
 }
 
