@@ -36,147 +36,203 @@ export class SocketIOGroupChatHandler {
       });
 
       // Handle group message sending
-      socket.on('group message', async (data: { 
-        groupId: string; 
-        groupName: string; 
-        senderId: string; 
-        senderUsername: string; 
-        senderAvatarColor: string; 
-        senderProfilePicture: string; 
-        body: string; 
-        gifUrl: string; 
-        selectedImage: string; 
-        isRead: boolean;
-        isGroupChat: boolean;
-      }) => {
-        const { 
-          groupId, 
-          senderId, 
-          senderUsername, 
-          senderAvatarColor, 
-          senderProfilePicture, 
-          body, 
-          gifUrl, 
-          selectedImage, 
-          isRead 
-        } = data;
-        
-        // Create message data
-        const messageData: IMessageData = {
-          _id: `${new mongoose.Types.ObjectId()}`,
-          conversationId: undefined,
-          receiverId: undefined,
-          receiverUsername: undefined,
-          receiverAvatarColor: undefined,
-          receiverProfilePicture: undefined,
-          senderUsername,
-          senderId,
-          senderAvatarColor,
-          senderProfilePicture,
-          body,
-          isRead,
-          gifUrl: gifUrl || '',
-          selectedImage: selectedImage || '',
-          reaction: [],
-          createdAt: new Date(),
-          deleteForMe: false,
-          deleteForEveryone: false,
-          isGroupChat: true,
-          groupId
-        };
+      socket.on(
+        'group message',
+        async (data: {
+          groupId: string;
+          groupName: string;
+          senderId: string;
+          senderUsername: string;
+          senderAvatarColor: string;
+          senderProfilePicture: string;
+          body: string;
+          gifUrl: string;
+          selectedImage: string;
+          isRead: boolean;
+          isGroupChat: boolean;
+        }) => {
+          const { groupId, senderId, senderUsername, senderAvatarColor, senderProfilePicture, body, gifUrl, selectedImage, isRead } = data;
 
-        // Add message to cache
-        await groupMessageCache.addGroupChatMessageToCache(groupId, messageData);
-        
-        // Add to database via queue
-        chatQueue.addChatJob('addChatMessageToDB', messageData);
+          // Create message data
+          const messageData: IMessageData = {
+            _id: `${new mongoose.Types.ObjectId()}`,
+            conversationId: undefined,
+            receiverId: undefined,
+            receiverUsername: undefined,
+            receiverAvatarColor: undefined,
+            receiverProfilePicture: undefined,
+            senderUsername,
+            senderId,
+            senderAvatarColor,
+            senderProfilePicture,
+            body,
+            isRead,
+            gifUrl: gifUrl || '',
+            selectedImage: selectedImage || '',
+            reaction: [],
+            createdAt: new Date(),
+            deleteForMe: false,
+            deleteForEveryone: false,
+            isGroupChat: true,
+            groupId
+          };
 
-        // Emit message to group room
-        this.io.to(groupId).emit('group message received', messageData);
+          // Add message to cache
+          await groupMessageCache.addGroupChatMessageToCache(groupId, messageData);
 
-        // Update group message list for all members
-        const group = await groupMessageCache.getGroupChat(groupId);
-        if (group && group.members && Array.isArray(group.members)) {
-          for (const member of group.members) {
-            if (member.state === 'accepted') {
-              this.io.to(member.userId).emit('group chat list', group);
+          // Add to database via queue
+          chatQueue.addChatJob('addChatMessageToDB', messageData);
+
+          // Emit message to group room
+          this.io.to(groupId).emit('group message received', messageData);
+
+          // Update group message list for all members
+          const group = await groupMessageCache.getGroupChat(groupId);
+          if (group && group.members && Array.isArray(group.members)) {
+            for (const member of group.members) {
+              if (member.state === 'accepted') {
+                this.io.to(member.userId as string).emit('group chat list', group);
+              }
             }
           }
         }
-      });
+      );
 
       // Handle group message reactions
-      socket.on('group message reaction', async (data: {
-        messageId: string;
-        groupId: string;
-        reaction: string;
-        type: string;
-        userId: string;
-        username: string;
-      }) => {
-        const { messageId, groupId, reaction, type, userId, username } = data;
-        
-        // Update message reaction in cache
-        const updatedMessage = await groupMessageCache.updateMessageReaction(
-          messageId,
-          groupId, 
-          reaction, 
-          type,
-          userId,
-          username
-        );
-        
-        if (updatedMessage) {
-          this.io.to(groupId).emit('group message reaction', updatedMessage);
-        }
-      });
+      // socket.on('group message reaction', async (data: {
+      //   messageId: string;
+      //   groupId: string;
+      //   reaction: string;
+      //   type: string;
+      //   userId: string;
+      //   username: string;
+      // }) => {
+      //   const { messageId, groupId, reaction, type, userId, username } = data;
+
+      //   // Update message reaction in cache
+      //   const updatedMessage = await groupMessageCache.updateMessageReaction(
+      //     messageId,
+      //     groupId,
+      //     reaction,
+      //     type,
+      //     userId,
+      //     username
+      //   );
+
+      //   if (updatedMessage) {
+      //     this.io.to(groupId).emit('group message reaction', updatedMessage);
+      //   }
+      // });
 
       // Handle group actions
-      socket.on('group action', async (data: { 
-        type: string; 
-        data: any;
-      }) => {
+      socket.on('group action', async (data: { type: string; data: any }) => {
         const { type, data: actionData } = data;
-        
+        console.log('Group action:', type, actionData);
         switch (type) {
           case 'CREATE_GROUP':
-            // Handled by controller
+            // Handled by controller, but we can emit additional event here if needed
+            if (actionData && actionData.group) {
+              this.io.emit('group action', {
+                type: 'update',
+                data: actionData.group
+              });
+            }
             break;
-            
+
+          case 'ACCEPT_GROUP_INVITATION':
+            // Emit accept event to all relevant users
+            if (actionData) {
+              const group = await groupMessageCache.getGroupChat(actionData.groupId);
+              if (group) {
+                this.io.emit('group action', {
+                  type: 'accept',
+                  data: group
+                });
+              }
+            }
+            break;
+
           case 'UPDATE_GROUP':
-            // Group info update already handled by controller
+            if (actionData) {
+              this.io.emit('group action', {
+                type: 'update',
+                data: actionData
+              });
+              console.log('Group updated:', actionData);
+            }
             break;
-            
+
           case 'ADD_MEMBERS':
-            // Addition of members handled by controller
+            if (actionData) {
+              this.io.emit('group action', {
+                type: 'update',
+                data: actionData
+              });
+            }
             break;
-            
+
           case 'REMOVE_MEMBER':
-            // Removal handled by controller
+            // Emit remove event to all relevant users
+            if (actionData) {
+              this.io.emit('group action', {
+                type: 'remove',
+                data: {
+                  groupId: actionData.groupId,
+                  memberId: actionData.userId
+                }
+              });
+            }
             break;
-            
+
           case 'PROMOTE_ADMIN':
-            // Promotion handled by controller
+            // Emit promote event to all relevant users
+            if (actionData) {
+              const group = await groupMessageCache.getGroupChat(actionData.groupId);
+              if (group) {
+                this.io.emit('group action', {
+                  type: 'promote',
+                  data: group
+                });
+              }
+            }
             break;
-            
+
           case 'LEAVE_GROUP':
-            // Leaving handled by controller
+            // Emit leave event to all relevant users
+            if (actionData) {
+              const group = await groupMessageCache.getGroupChat(actionData.groupId);
+              if (group) {
+                this.io.emit('group action', {
+                  type: 'leave',
+                  data: group
+                });
+              }
+            }
             break;
-            
+
           case 'DELETE_GROUP':
-            // Deletion handled by controller
+            // Emit delete event to all relevant users
+            if (actionData) {
+              this.io.emit('group action', {
+                type: 'delete',
+                data: {
+                  groupId: actionData.groupId
+                }
+              });
+            }
             break;
-            
+
           case 'READ_GROUP_MESSAGES':
-            if (actionData.groupId && actionData.userId) {
-              await this.markGroupMessagesAsRead(actionData.groupId, actionData.userId);
+            if (actionData && actionData.groupId && actionData.userId) {
+              // If you implement this functionality later, uncomment below
+              // await this.markGroupMessagesAsRead(actionData.groupId, actionData.userId);
               this.io.to(actionData.groupId).emit('group messages read', {
                 groupId: actionData.groupId,
                 userId: actionData.userId
               });
             }
             break;
-            
+
           default:
             break;
         }
@@ -184,18 +240,18 @@ export class SocketIOGroupChatHandler {
     });
   }
 
-  private async markGroupMessagesAsRead(groupId: string, userId: string): Promise<void> {
-    try {
-      // Mark messages as read in cache
-      await groupMessageCache.markMessagesAsRead(groupId, userId);
-      
-      // Queue job to update database
-      chatQueue.addChatJob('markGroupMessagesAsReadInDB', {
-        groupId,
-        userId
-      });
-    } catch (error) {
-      console.log('Error marking group messages as read', error);
-    }
-  }
+  // private async markGroupMessagesAsRead(groupId: string, userId: string): Promise<void> {
+  //   try {
+  //     // Mark messages as read in cache
+  //     await groupMessageCache.markMessagesAsRead(groupId, userId);
+
+  //     // Queue job to update database
+  //     chatQueue.addChatJob('markGroupMessagesAsReadInDB', {
+  //       groupId,
+  //       userId
+  //     });
+  //   } catch (error) {
+  //     console.log('Error marking group messages as read', error);
+  //   }
+  // }
 }

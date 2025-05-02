@@ -21,6 +21,7 @@ import { SocketIOUserHandler } from '@socket/user';
 import { SocketIONotificationHandler } from '@socket/notification';
 import { SocketIOImageHandler } from '@socket/image';
 import { SocketIOChatHandler } from '@socket/chat';
+import { SocketIOGroupChatHandler } from '@socket/group-chat';
 
 const SERVER_PORT = 5000;
 const log: Logger = config.createLogger('server');
@@ -139,6 +140,7 @@ export class ChattyServer {
     const chatSocketHandler: SocketIOChatHandler = new SocketIOChatHandler(io);
     const notificationSocketHandler: SocketIONotificationHandler = new SocketIONotificationHandler();
     const imageSocketHandler: SocketIOImageHandler = new SocketIOImageHandler();
+    const groupChatSocketHandler: SocketIOGroupChatHandler = new SocketIOGroupChatHandler(io);
 
     postSocketHandler.listen();
     followerSocketHandler.listen();
@@ -146,5 +148,6 @@ export class ChattyServer {
     chatSocketHandler.listen();
     notificationSocketHandler.listen(io);
     imageSocketHandler.listen(io);
+    groupChatSocketHandler.listen();
   }
 }
