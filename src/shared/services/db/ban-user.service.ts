@@ -1,5 +1,6 @@
 import { AuthModel } from '@auth/models/auth.schema';
 import { UserModel } from '@user/models/user.schema';
+import { AppealModel } from '@appeal/models/appeal.schema';
 import { IUserDocument } from '@user/interfaces/user.interface';
 import { IAuthDocument } from '@auth/interfaces/auth.interface';
 
@@ -22,6 +23,15 @@ class UserBanService {
     );
 
     return updatedAuth;
+  }
+  public async getBanInfoByAuthId(authId: string): Promise<{ banReason: string | null; bannedAt: Date | null } | null> {
+    const auth: IAuthDocument | null = await AuthModel.findById(authId);
+    if (!auth || !auth.isBanned) return null;
+
+    return {
+      banReason: auth.banReason || null,
+      bannedAt: auth.bannedAt || null
+    };
   }
 
   // Unban user và trả về dữ liệu người dùng sau khi unban
@@ -54,6 +64,43 @@ class UserBanService {
       return bannedUsers;
     } catch (error) {
       console.error('Error fetching banned users:', error);
+      return [];
+    }
+  }
+
+  public async getUsersFromAppeals(skip: number, limit: number): Promise<any[]> {
+    try {
+      // Lấy các appeals có userId, content, status, createdAt
+      const appeals = await AppealModel.find().select('userId content status createdAt').skip(skip).limit(limit); // Phân trang ở bước này
+
+      const userIds = appeals.map((appeal) => appeal.userId);
+      const users = await UserModel.find({ _id: { $in: userIds } });
+
+      const authIds = users.map((user) => user.authId).filter(Boolean);
+      const auths = await AuthModel.find({ _id: { $in: authIds } }).select('username');
+      const authMap = new Map(auths.map((auth) => [auth._id.toString(), auth.username]));
+
+      const userMap = new Map(users.map((user) => [user._id.toString(), user]));
+
+      const result = appeals.map((appeal) => {
+        const user = userMap.get(appeal.userId.toString());
+        const username = authMap.get(user?.authId?.toString() || '');
+
+        return {
+          ...user?.toObject(),
+          username,
+          appeal: {
+            _id: appeal._id,
+            content: appeal.content,
+            status: appeal.status,
+            createdAt: appeal.createdAt
+          }
+        };
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching users from appeals:', error);
       return [];
     }
   }

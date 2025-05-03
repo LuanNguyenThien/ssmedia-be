@@ -3,6 +3,7 @@ import HTTP_STATUS from 'http-status-codes';
 import { userBanService } from '@service/db/ban-user.service';
 import { reportProfileService } from '@service/db/report-profile.service';
 import { BadRequestError } from '@global/helpers/error-handler'; 
+import { appealService } from '@service/db/appeal.service';
 export class Add {
   public async banUser(req: Request, res: Response): Promise<void> {
     try {
@@ -52,5 +53,21 @@ export class Add {
     }
 
     res.status(HTTP_STATUS.OK).json({ message: 'Report status updated successfully', updatedReport });
+  }
+
+  public async updateAppealStatus(req: Request, res: Response): Promise<void> {
+    const { appealId, status } = req.body;
+
+    if (!['pending', 'reviewed', 'resolved'].includes(status)) {
+      throw new BadRequestError('Invalid status value');
+    }
+
+    const updated = await appealService.updateAppealStatus( appealId , status);
+
+    if (!updated) {
+      throw new BadRequestError('Report not found');
+    }
+
+    res.status(HTTP_STATUS.OK).json({ message: 'Report status updated successfully', updated });
   }
 }

@@ -34,6 +34,7 @@
       "@image/*": ["src/features/images/*"],
       "@chat/*": ["src/features/chat/*"],
       "@search/*": ["src/features/search/*"],
+      "@appeal/*": ["src/features/account-appeal/*"],
       "@global/*": ["src/shared/globals/*"],
       "@api-serverAI/*": ["src/shared/services/api-serverAI/*"],
       "@service/*": ["src/shared/services/*"],
