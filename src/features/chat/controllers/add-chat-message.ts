@@ -143,6 +143,7 @@ export class Add {
     console.log(roomId);
     socketIOChatObject.emit('message received', data);
     socketIOChatObject.emit('chat list', data);
+    socketIOChatObject.emit('chat list-notification', data);
   }
 
   private async messageNotification({ currentUser, message, receiverName, receiverId }: IMessageNotification): Promise<void> {

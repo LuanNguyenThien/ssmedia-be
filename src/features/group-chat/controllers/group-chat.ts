@@ -315,7 +315,7 @@ export class GroupChat {
       receiverAvatarColor: undefined,
       receiverProfilePicture: undefined,
       senderUsername: 'System',
-      senderId: 'system',
+      senderId: 'system', // Changed from ObjectId to consistently use 'system' string
       senderAvatarColor: '#000000',
       senderProfilePicture: '',
       body: isSelfRemoval ? `${memberToRemove.username} left the group` : `${memberToRemove.username} was removed from the group`,
@@ -359,6 +359,12 @@ export class GroupChat {
       throw new BadRequestError('Only admins can promote members');
     }
 
+    // Check if member is pending
+    const isPendingMember = group.members.some((member) => `${member.userId}` === `${memberId}` && member.state === 'pending');
+    if (isPendingMember) {
+      throw new BadRequestError('Cannot promote a member with pending status');
+    }
+
     // Check if member exists and is not already an admin
     const memberToPromote = group.members.find((member) => `${member.userId}` === `${memberId}`);
     if (!memberToPromote) {
@@ -395,7 +401,7 @@ export class GroupChat {
       receiverAvatarColor: undefined,
       receiverProfilePicture: undefined,
       senderUsername: 'System',
-      senderId: 'system',
+      senderId: `${new mongoose.Types.ObjectId()}`,
       senderAvatarColor: '#000000',
       senderProfilePicture: '',
       body: `${memberToPromote.username} is now an admin`,
@@ -462,39 +468,7 @@ export class GroupChat {
     const userId = req.currentUser!.userId;
     try {
       // 1. Try to get pending group IDs from cache
-      let pendingGroupIds: string[] | null = null;
-      let pendingGroups: IGroupChatDocument[] = [];
-
-      console.time('getUserPendingInvitations');
-      try {
-        pendingGroupIds = await groupMessageCache.getUserPendingGroups(userId);
-      } catch (cacheError) {
-        pendingGroupIds = null;
-      }
-      console.timeEnd('getUserPendingInvitations');
-
-      // 2. If we have group IDs from cache, get group details
-      console.time('getGroupDetailsFromCacheOrDB');
-      if (pendingGroupIds && pendingGroupIds.length) {
-        const groupPromises = pendingGroupIds.map(async (groupId) => {
-          // Try cache first, fallback to DB
-          try {
-            const group = await groupMessageCache.getGroupChat(groupId);
-            if (group && Object.keys(group).length) return group;
-          } catch {
-            // Cache error, fallback to DB
-          }
-          return await groupChatService.getGroupChatById(groupId);
-        });
-        pendingGroups = (await Promise.all(groupPromises)).filter(Boolean);
-      }
-      console.timeEnd('getGroupDetailsFromCacheOrDB');
-
-      // 3. If no results from cache, fallback to DB for all
-      if (!pendingGroups.length) {
-        pendingGroups = await groupChatService.getUserPendingGroups(userId);
-      }
-
+      const pendingGroups: IGroupChatDocument[] = await groupChatService.getUserPendingGroups(userId);
       // 4. Return result
       res.status(HTTP_STATUS.OK).json({
         message: 'User pending group invitations',
@@ -545,7 +519,7 @@ export class GroupChat {
       receiverAvatarColor: undefined,
       receiverProfilePicture: undefined,
       senderUsername: 'System',
-      senderId: 'system',
+      senderId: `${new mongoose.Types.ObjectId()}`,
       senderAvatarColor: '#000000',
       senderProfilePicture: '',
       body: `${memberUsername} joined the group`,
@@ -668,7 +642,7 @@ export class GroupChat {
       receiverAvatarColor: undefined,
       receiverProfilePicture: undefined,
       senderUsername: 'System',
-      senderId: 'system',
+      senderId: `${new mongoose.Types.ObjectId()}`,
       senderAvatarColor: '#000000',
       senderProfilePicture: '',
       body: `${memberToRemove.username} left the group`,
@@ -749,21 +723,17 @@ export class GroupChat {
   public async checkUserInGroup(req: Request, res: Response): Promise<void> {
     const { groupId, userId } = req.params;
     // Try to get group from cache first
-    let group = await groupMessageCache.getGroupChat(groupId);
-
-    // If not in cache or incomplete data, get from DB
-    if (!group || !Object.keys(group).length) {
-      group = await groupChatService.getGroupChatById(groupId);
-      if (!group) {
-        throw new BadRequestError('Group not found');
-      }
-      await groupMessageCache.updateGroupInfo(groupId, group);
-    }
-
+    const group = await groupChatService.getGroupChatById(groupId);
+  
     const member = group.members.find((m) => `${m.userId}` === `${userId}`);
     if (!member) {
       throw new BadRequestError('You are not a member of this group');
+    }    
+    // Add check for user state
+    if (member.state !== 'accepted') {
+      throw new BadRequestError('Your membership request is still pending or has been declined');
     }
+    
     res.status(HTTP_STATUS.OK).json({ message: 'User is a member of the group', group, member });
   }
 }

@@ -69,7 +69,6 @@ class ChatService {
       }
     })
       .select('_id name profilePicture createdAt');
-
     if (!groupChats.length && !(await MessageModel.exists({ $or: [{ senderId: userId }, { receiverId: userId }] }))) {
       return [];
     }

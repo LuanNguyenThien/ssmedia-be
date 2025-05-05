@@ -103,7 +103,7 @@ groupChatSchema.index({ name: 'text', description: 'text' }); // Text search ind
 
 // Virtual for member count
 groupChatSchema.virtual('memberCount').get(function () {
-  return this.members.filter((member: IGroupChatMemberDocument) => member.state === 'accepted').length;
+  return this.members && this.members.filter((member: IGroupChatMemberDocument) => member.state === 'accepted').length;
 });
 
 // Middleware to set the creator as admin and accepted
