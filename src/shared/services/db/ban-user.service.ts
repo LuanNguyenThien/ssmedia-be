@@ -105,6 +105,16 @@ class UserBanService {
     }
   }
 
+  public async countUsersFromAppeals(): Promise<number> {
+    try {
+      // Đếm tổng số appeals để xác định tổng số người dùng đang kháng cáo
+      return await AppealModel.countDocuments();
+    } catch (error) {
+      console.error('Error counting users from appeals:', error);
+      return 0;
+    }
+  }
+
   private aggregateProject() {
     return {
       _id: 1,

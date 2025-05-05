@@ -4,6 +4,9 @@ import { userBanService } from '@service/db/ban-user.service';
 import { reportProfileService } from '@service/db/report-profile.service';
 import { BadRequestError } from '@global/helpers/error-handler'; 
 import { appealService } from '@service/db/appeal.service';
+
+import { socketIOUserObject } from '@socket/user';
+
 export class Add {
   public async banUser(req: Request, res: Response): Promise<void> {
     try {
@@ -14,6 +17,8 @@ export class Add {
         res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'User not found' });
         return;
       }
+
+      socketIOUserObject.emit('ban user', { userId, reason });
 
       res.status(HTTP_STATUS.OK).json({ message: 'User banned successfully', data: updatedUser });
     } catch (error) {
