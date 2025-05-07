@@ -29,6 +29,8 @@ class PostService {
       postQuery = query;
     }
 
+     postQuery.isHidden = { $ne: true };
+     
     // Xử lý lọc theo ngày
     if (query.startDate || query.endDate) {
       postQuery.createdAt = {};
