@@ -23,7 +23,9 @@ class ReportPostService {
     return await ReportPostModel.create(reportPostData);
   }
 
-  public async getReportPosts(skip: number, limit: number): Promise<any[]> {
+  public async getReportPosts(skip: number, limit: number): Promise<{ total: number; reportposts: any[] }> {
+    const total = await ReportPostModel.countDocuments(); // Lấy tổng số report
+
     const reportPosts: IReportPostDocument[] = await ReportPostModel.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
 
     const postIds: ObjectId[] = reportPosts.map((report) => new ObjectId(report.postId));
@@ -37,7 +39,10 @@ class ReportPostService {
       post: postMap.get(report.postId.toString()) || null
     }));
 
-    return combined;
+    return {
+      total,
+      reportposts: combined
+    };
   }
 
   public async updateReportPostStatus(reportId: string, status: 'pending' | 'reviewed' | 'resolved'): Promise<IReportPostDocument> {

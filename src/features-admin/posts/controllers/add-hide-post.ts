@@ -4,11 +4,24 @@ import { postService } from '@service/db/post.service';
 import { reportPostService } from '@service/db/report-post.service';
 import { BadRequestError } from '@global/helpers/error-handler';
 import { socketIOPostObject } from '@socket/post';
+import { cache } from '@service/redis/cache';
+import {  IPostDocument } from '@post/interfaces/post.interface';
+import { PostModel } from '@post/models/post.schema';
+// const postCache: PostCache = new PostCache();
+const postCache = cache.postCache;
 export class Add {
   public async hidePost(req: Request, res: Response): Promise<void> {
     try {
       const { postId, reason } = req.body;
+      
+      const updatedPost: Partial<IPostDocument> = {
+        isHidden: true,
+        hiddenReason: reason,
+        hiddenAt: new Date()
+      };
 
+      // Cập nhật cache với type assertion
+      const postUpdated = await postCache.updatePostInCache(postId, updatedPost as IPostDocument);
       await postService.hidePost(postId, reason);
       socketIOPostObject.emit('hide post', { postId, reason }); 
       res.status(HTTP_STATUS.OK).json({ message: 'Post hidden successfully' });
@@ -25,6 +38,15 @@ export class Add {
       if (!postId) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Missing postId parameter' });
       }
+
+      const updatedPost: Partial<IPostDocument> = {
+        isHidden: false,
+        
+      };
+
+      // Cập nhật cache với type assertion
+      const postUpdated = await postCache.updatePostInCache(postId, updatedPost as IPostDocument);
+      
 
       const post = await postService.getPostById(postId);
       if (!post) {
