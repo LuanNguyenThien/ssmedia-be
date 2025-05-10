@@ -46,29 +46,35 @@ export class Get {
   }
 
   public async profile(req: Request, res: Response): Promise<void> {
-    const cachedUser: IUserDocument = (await userCache.getUserFromCache(`${req.currentUser!.userId}`)) as IUserDocument;
-    const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(`${req.currentUser!.userId}`);
+    // const cachedUser: IUserDocument = (await userCache.getUserFromCache(`${req.currentUser!.userId}`)) as IUserDocument;
+    // const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(`${req.currentUser!.userId}`);
+    const existingUser: IUserDocument = await userService.getUserById(`${req.currentUser!.userId}`);
+
     res.status(HTTP_STATUS.OK).json({ message: 'Get user profile', user: existingUser });
   }
 
   public async profileByUserId(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
-    const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
-    const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(userId);
+    // const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
+    // const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(userId);
+    const existingUser: IUserDocument = await userService.getUserById(userId);
     res.status(HTTP_STATUS.OK).json({ message: 'Get user profile by id', user: existingUser });
   }
 
   public async profileAndPosts(req: Request, res: Response): Promise<void> {
     const { userId, username, uId } = req.params;
     const userName: string = Helpers.firstLetterUppercase(username);
-    const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
-    const cachedUserPosts: IPostDocument[] = await postCache.getUserPostsFromCache('post', parseInt(uId, 10));
 
-    const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(userId);
-    const userPosts: IPostDocument[] = cachedUserPosts.length
-      ? cachedUserPosts
-      : await postService.getPosts({ username: userName }, 0, 100, { createdAt: -1 });
+    // const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
+    // const cachedUserPosts: IPostDocument[] = await postCache.getUserPostsFromCache('post', parseInt(uId, 10));
 
+    // const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(userId);
+    // const userPosts: IPostDocument[] = cachedUserPosts.length
+    //   ? cachedUserPosts
+    //   : await postService.getPosts({ username: userName }, 0, 100, { createdAt: -1 });
+
+    const existingUser: IUserDocument = await userService.getUserById(userId);
+    const userPosts: IPostDocument[] = await postService.getPosts({ username: userName }, 0, 100, { createdAt: -1 });
     res.status(HTTP_STATUS.OK).json({ message: 'Get user profile and posts', user: existingUser, posts: userPosts });
   }
 

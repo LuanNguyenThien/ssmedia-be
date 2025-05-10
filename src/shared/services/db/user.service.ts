@@ -37,6 +37,11 @@ class UserService {
     ).exec();
   }
 
+  public async updateProfile(uId: string, username: string, email: string): Promise<void> {
+    const response = await AuthModel.updateOne({ uId: uId }, { $set: { username, email } }).exec();
+    console.log('response', response);
+  }
+
   public async updateNotificationSettings(userId: string, settings: INotificationSettings): Promise<void> {
     await UserModel.updateOne({ _id: userId }, { $set: { notifications: settings } }).exec();
   }
@@ -169,7 +174,7 @@ class UserService {
           email: 1,
           avatarColor: 1,
           profilePicture: '$user.profilePicture',
-          followersCount: '$user.followersCount',
+          followersCount: '$user.followersCount'
         }
       }
     ]);

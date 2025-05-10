@@ -19,55 +19,85 @@ const userCache = cache.userCache;
 
 class ReactionService {
   public async addReactionDataToDB(reactionData: IReactionJob): Promise<void> {
+    // Destructure input data
     const { postId, userTo, userFrom, username, type, previousReaction, reactionObject } = reactionData;
     let updatedReactionObject: IReactionDocument = reactionObject as IReactionDocument;
     if (previousReaction) {
       updatedReactionObject = omit(reactionObject, ['_id']);
     }
-    const updatedReaction: [IUserDocument, IReactionDocument, IPostDocument] = (await Promise.all([
-      userCache.getUserFromCache(`${userTo}`),
-      ReactionModel.replaceOne({ postId, type: previousReaction, username }, updatedReactionObject, { upsert: true }),
-      PostModel.findOneAndUpdate(
-        { _id: postId },
-        {
-          $inc: {
-            [`reactions.${previousReaction}`]: -1,
-            [`reactions.${type}`]: 1
-          }
-        },
-        { new: true }
-      )
-    ])) as unknown as [IUserDocument, IReactionDocument, IPostDocument];
 
-    if (updatedReaction[0].notifications.reactions && userTo !== userFrom) {
-      const notificationModel: INotificationDocument = new NotificationModel();
-      const notifications = await notificationModel.insertNotification({
+    try {
+      // Parallelize user cache fetch, reaction upsert, and post update
+      const [userDoc, , postDoc] = (await Promise.all([
+        userCache.getUserFromCache(`${userTo}`), // Consider using .lean() if possible in your cache implementation
+        ReactionModel.replaceOne({ postId, type: previousReaction, username }, updatedReactionObject, { upsert: true }),
+        PostModel.findOneAndUpdate(
+          { _id: postId },
+          {
+            $inc: {
+              [`reactions.${previousReaction}`]: -1,
+              [`reactions.${type}`]: 1
+            }
+          },
+          { new: true }
+        ).lean() // Use lean for performance
+      ])) as unknown as [IUserDocument, IReactionDocument, IPostDocument];
+
+      // Early exit if notification is not needed
+      if (!userDoc?.notifications?.reactions || userTo === userFrom) return;
+
+      // Prepare notification data
+      const notificationPayload = {
         userFrom: userFrom as string,
         userTo: userTo as string,
         message: `${username} voted to your post.`,
         notificationType: 'reactions',
         entityId: new mongoose.Types.ObjectId(postId),
-        createdItemId: new mongoose.Types.ObjectId(updatedReaction[1]._id!),
+        createdItemId: new mongoose.Types.ObjectId((reactionObject as any)._id || ''),
         createdAt: new Date(),
         comment: '',
-        post: updatedReaction[2].post,
-        imgId: updatedReaction[2].imgId!,
-        imgVersion: updatedReaction[2].imgVersion!,
-        gifUrl: updatedReaction[2].gifUrl!,
+        post: postDoc?.post,
+        imgId: postDoc?.imgId || '',
+        imgVersion: postDoc?.imgVersion || '',
+        gifUrl: postDoc?.gifUrl || '',
         reaction: type!
-      });
-      socketIONotificationObject.emit('insert notification', notifications, { userTo });
-      const templateParams: INotificationTemplate = {
-        username: updatedReaction[0].username!,
-        message: `${username} voted to your post.`,
-        header: 'Post Reaction Notification'
       };
-      const template: string = notificationTemplate.notificationMessageTemplate(templateParams);
-      emailQueue.addEmailJob('reactionsEmail', {
-        receiverEmail: updatedReaction[0].email!,
-        template,
-        subject: 'Post reaction notification'
-      });
+
+      // Parallelize notification insert, socket emit, and email queue
+      await Promise.all([
+        (async () => {
+          try {
+            const notificationModel: INotificationDocument = new NotificationModel();
+            const notifications = await notificationModel.insertNotification(notificationPayload);
+            socketIONotificationObject.emit('insert notification', notifications, { userTo });
+          } catch (err) {
+            // Log but do not throw to avoid blocking main flow
+            console.error('Notification/socket error:', err);
+          }
+        })(),
+        (async () => {
+          try {
+            const templateParams: INotificationTemplate = {
+              username: userDoc.username!,
+              message: `${username} voted to your post.`,
+              header: 'Post Reaction Notification'
+            };
+            const template: string = notificationTemplate.notificationMessageTemplate(templateParams);
+            await emailQueue.addEmailJob('reactionsEmail', {
+              receiverEmail: userDoc.email!,
+              template,
+              subject: 'Post reaction notification'
+            });
+          } catch (err) {
+            // Log but do not throw to avoid blocking main flow
+            console.error('Email queue error:', err);
+          }
+        })()
+      ]);
+    } catch (err) {
+      // Global error handler for DB/cache issues
+      console.error('addReactionDataToDB error:', err);
+      throw err;
     }
   }
 

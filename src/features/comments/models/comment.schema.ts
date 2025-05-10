@@ -5,15 +5,11 @@ const commentSchema: Schema = new Schema({
   postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', index: true },
   comment: { type: String, default: '' },
   username: { type: String },
-  avataColor: { type: String },
+  avatarColor: { type: String },
   profilePicture: { type: String },
   reactions: {
-    like: { type: Number, default: 0 },
-    love: { type: Number, default: 0 },
-    happy: { type: Number, default: 0 },
-    wow: { type: Number, default: 0 },
-    sad: { type: Number, default: 0 },
-    angry: { type: Number, default: 0 }
+    upvote: { type: Number, default: 0 },
+    downvote: { type: Number, default: 0 }
   },
   selectedImage: { type: String, default: '' },
   parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment', default: null },

@@ -4,15 +4,10 @@ import HTTP_STATUS from 'http-status-codes';
 import { joiValidation } from '@global/decorators/joi-validation.decorators';
 import { addCommentSchema } from '@comment/schemes/comment';
 import { ICommentDocument, ICommentJob } from '@comment/interfaces/comment.interface';
-// import { CommentCache } from '@service/redis/comment.cache';
 import { commentQueue } from '@service/queues/comment.queue';
-import { cache } from '@service/redis/cache';
 import { UploadApiResponse } from 'cloudinary';
 import { uploads } from '@global/helpers/cloudinary-upload';
 import { BadRequestError } from '@global/helpers/error-handler';
-
-// const commentCache: CommentCache = new CommentCache();
-const commentCache = cache.commentCache;
 
 export class Add {
   @joiValidation(addCommentSchema)
@@ -34,11 +29,14 @@ export class Add {
       avatarColor: `${req.currentUser?.avatarColor}`,
       profilePicture,
       comment,
+      reactions: {
+        upvote: 0,
+        downvote: 0
+      },
       selectedImage: fileUrl,
       parentId: parentId || null,
       createdAt: new Date()
     } as ICommentDocument;
-    await commentCache.savePostCommentToCache(postId, JSON.stringify(commentData));
 
     const databaseCommentData: ICommentJob = {
       postId,
