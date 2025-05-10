@@ -87,10 +87,8 @@ class GroupChatWorker {
   async updateMemberRoleInDB(job: Job): Promise<void> {
     try {
       const { groupChatId, userId, role } = job.data;
-      // Assuming there's a method to update a member's role in the service
-      await groupChatService.updateGroupChat(groupChatId, {
-        members: [{ userId, role } as IGroupChatMemberDocument]
-      });
+      // Use the dedicated method that only updates the role of the specific member
+      await groupChatService.updateMemberRole(groupChatId, userId, role);
     } catch (error) {
       console.log(error);
     }

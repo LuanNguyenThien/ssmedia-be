@@ -178,6 +178,28 @@ class GroupChatService {
 
     return groupChat;
   }
+
+  public async updateMemberRole(groupId: string, userId: string, role: string): Promise<IGroupChatDocument> {
+    const groupChat: IGroupChatDocument = (await GroupChatModel.findOneAndUpdate(
+      {
+        _id: groupId,
+        'members.userId': userId
+      },
+      {
+        $set: { 
+          'members.$.role': role,
+          'members.$.state': 'accepted' // Always set state to accepted when updating role
+        }
+      },
+      { new: true }
+    ).exec()) as IGroupChatDocument;
+
+    if (!groupChat) {
+      throw new Error('Group chat not found or member does not exist');
+    }
+
+    return groupChat;
+  }
 }
 
 export const groupChatService: GroupChatService = new GroupChatService();

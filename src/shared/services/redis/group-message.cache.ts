@@ -324,7 +324,8 @@ export class GroupMessageCache extends BaseCache {
         if (member.userId === userId) {
           return {
             ...member,
-            role
+            role,
+            state: 'accepted' // Always set state to accepted when updating role
           };
         }
         return member;

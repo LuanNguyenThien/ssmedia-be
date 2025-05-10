@@ -301,7 +301,7 @@ export class GroupChat {
     });
 
     // Send notifications
-    socketIOChatObject.emit('group member removed', {
+    socketIOChatObject.emit('system-group-chat', {
       groupId,
       memberId
     });
@@ -359,26 +359,33 @@ export class GroupChat {
       throw new BadRequestError('Only admins can promote members');
     }
 
-    // Check if member is pending
-    const isPendingMember = group.members.some((member) => `${member.userId}` === `${memberId}` && member.state === 'pending');
-    if (isPendingMember) {
-      throw new BadRequestError('Cannot promote a member with pending status');
-    }
-
-    // Check if member exists and is not already an admin
+    // Find the member to promote
     const memberToPromote = group.members.find((member) => `${member.userId}` === `${memberId}`);
     if (!memberToPromote) {
       throw new BadRequestError('Member not found in group');
     }
 
+    // Cannot promote a member who is already an admin
     if (memberToPromote.role === 'admin') {
       throw new BadRequestError('Member is already an admin');
     }
 
-    // Update cache first
+    // If member has pending status, first accept their invitation
+    if (memberToPromote.state === 'pending') {
+      await groupMessageCache.updateMemberState(groupId, memberId, 'accepted');
+
+      // Queue job for DB update for state
+      groupChatQueue.addGroupChatJob('updateMemberStateInDB', {
+        groupChatId: groupId,
+        userId: memberId,
+        state: 'accepted'
+      });
+    }
+
+    // Update cache for role change
     await groupMessageCache.updateMemberRole(groupId, memberId, 'admin');
 
-    // Queue job for DB update
+    // Queue job for DB update for role
     groupChatQueue.addGroupChatJob('updateMemberRoleInDB', {
       groupChatId: groupId,
       userId: memberId,
@@ -386,10 +393,9 @@ export class GroupChat {
     });
 
     // Notify members
-    socketIOChatObject.emit('group member promoted', {
+    socketIOChatObject.emit('system-group-chat', {
       groupId,
-      memberId,
-      username: memberToPromote.username
+      memberId
     });
 
     // Add system message about promotion
@@ -401,7 +407,7 @@ export class GroupChat {
       receiverAvatarColor: undefined,
       receiverProfilePicture: undefined,
       senderUsername: 'System',
-      senderId: `${new mongoose.Types.ObjectId()}`,
+      senderId: 'system', // Will be converted to fixed ObjectId in the service
       senderAvatarColor: '#000000',
       senderProfilePicture: '',
       body: `${memberToPromote.username} is now an admin`,
@@ -519,7 +525,7 @@ export class GroupChat {
       receiverAvatarColor: undefined,
       receiverProfilePicture: undefined,
       senderUsername: 'System',
-      senderId: `${new mongoose.Types.ObjectId()}`,
+      senderId: 'system', // Changed from ObjectId to consistently use 'system' string
       senderAvatarColor: '#000000',
       senderProfilePicture: '',
       body: `${memberUsername} joined the group`,
@@ -537,11 +543,8 @@ export class GroupChat {
     await groupMessageCache.addGroupChatMessageToCache(groupId, messageData);
     chatQueue.addChatJob('addChatMessageToDB', messageData);
 
-    // Notify all members
-    socketIOChatObject.emit('group invitation accepted', {
-      groupId,
-      userId,
-      username: memberUsername
+    socketIOChatObject.emit('system-group-chat', {
+      groupId
     });
 
     res.status(HTTP_STATUS.OK).json({
@@ -642,7 +645,7 @@ export class GroupChat {
       receiverAvatarColor: undefined,
       receiverProfilePicture: undefined,
       senderUsername: 'System',
-      senderId: `${new mongoose.Types.ObjectId()}`,
+      senderId: 'system', // Changed from ObjectId to consistently use 'system' string
       senderAvatarColor: '#000000',
       senderProfilePicture: '',
       body: `${memberToRemove.username} left the group`,
@@ -660,11 +663,8 @@ export class GroupChat {
     await groupMessageCache.addGroupChatMessageToCache(groupId, messageData);
     chatQueue.addChatJob('addChatMessageToDB', messageData);
 
-    // Notify members
-    socketIOChatObject.emit('group member left', {
-      groupId,
-      userId,
-      username: memberToRemove.username
+    socketIOChatObject.emit('system-group-chat', {
+      groupId
     });
 
     res.status(HTTP_STATUS.OK).json({
@@ -724,16 +724,16 @@ export class GroupChat {
     const { groupId, userId } = req.params;
     // Try to get group from cache first
     const group = await groupChatService.getGroupChatById(groupId);
-  
+
     const member = group.members.find((m) => `${m.userId}` === `${userId}`);
     if (!member) {
       throw new BadRequestError('You are not a member of this group');
-    }    
+    }
     // Add check for user state
     if (member.state !== 'accepted') {
       throw new BadRequestError('Your membership request is still pending or has been declined');
     }
-    
+
     res.status(HTTP_STATUS.OK).json({ message: 'User is a member of the group', group, member });
   }
 }

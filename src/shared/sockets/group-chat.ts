@@ -131,10 +131,10 @@ export class SocketIOGroupChatHandler {
         switch (type) {
           case 'CREATE_GROUP':
             // Handled by controller, but we can emit additional event here if needed
-            if (actionData && actionData.group) {
+            if (actionData) {
               this.io.emit('group action', {
-                type: 'update',
-                data: actionData.group
+                type: 'create',
+                data: actionData
               });
             }
             break;

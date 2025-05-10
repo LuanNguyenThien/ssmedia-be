@@ -4,48 +4,77 @@ import { ConversationModel } from '@chat/models/conversation.schema';
 import { GroupChatModel } from '@root/features/group-chat/models/group-chat.schema';
 import { MessageModel } from '@chat/models/chat.schema';
 import { ObjectId } from 'mongodb';
+import { isValidObjectId } from 'mongoose';
+
+// Create a fixed system user ObjectId - this will be consistent across the application
+const SYSTEM_USER_ID = new ObjectId('000000000000000000000000');
+
+function toObjectId(id: string | ObjectId): ObjectId {
+  // If already an ObjectId, return it
+  if (id instanceof ObjectId) {
+    return id;
+  }
+  
+  // Special case for 'system' user
+  if (id === 'system') {
+    return SYSTEM_USER_ID;
+  }
+  
+  // Otherwise validate and convert string to ObjectId
+  if (isValidObjectId(id)) {
+    return new ObjectId(id);
+  }
+  
+  throw new Error(`Invalid ObjectId: ${id}`);
+}
 
 class ChatService {
   public async addMessageToDB(data: IMessageData): Promise<void> {
-    if (!data.isGroupChat) {
-      const conversation: IConversationDocument[] = await ConversationModel.find({ _id: data?.conversationId }).exec();
-      if (conversation.length === 0) {
-        await ConversationModel.create({
-          _id: data?.conversationId,
-          senderId: data.senderId,
-          receiverId: data.receiverId
-        });
+    try {
+      const senderObjectId = toObjectId(data.senderId);
+      if (!data.isGroupChat) {
+        const conversation: IConversationDocument[] = await ConversationModel.find({ _id: data?.conversationId }).exec();
+        if (conversation.length === 0) {
+          await ConversationModel.create({
+            _id: data?.conversationId,
+            senderId: senderObjectId,
+            receiverId: data.receiverId
+          });
+        }
+      } else {
+        // Nếu là tin nhắn nhóm, kiểm tra nhóm có tồn tại không
+        const groupChat = await GroupChatModel.findById(data.groupId).exec();
+        if (!groupChat) {
+          throw new Error('Group chat not found');
+        }
       }
-    } else {
-      // Nếu là tin nhắn nhóm, kiểm tra nhóm có tồn tại không
-      const groupChat = await GroupChatModel.findById(data.groupId).exec();
-      if (!groupChat) {
-        throw new Error('Group chat not found');
-      }
+    
+      // Tạo tin nhắn mới
+      await MessageModel.create({
+        _id: data._id,
+        conversationId: data.isGroupChat ? undefined : data.conversationId, // Chỉ dùng cho cá nhân
+        senderId: senderObjectId,
+        receiverId: data.isGroupChat ? undefined : toObjectId(data.receiverId as string), // Chỉ dùng cho cá nhân
+        senderUsername: data.senderUsername,
+        senderAvatarColor: data.senderAvatarColor,
+        senderProfilePicture: data.senderProfilePicture,
+        receiverUsername: data.isGroupChat ? undefined : data.receiverUsername, // Chỉ dùng cho cá nhân
+        receiverAvatarColor: data.isGroupChat ? undefined : data.receiverAvatarColor, // Chỉ dùng cho cá nhân
+        receiverProfilePicture: data.isGroupChat ? undefined : data.receiverProfilePicture, // Chỉ dùng cho cá nhân
+        isGroupChat: data.isGroupChat || false, // Mặc định là false nếu không truyền
+        groupId: data.isGroupChat ? data.groupId : undefined, // Chỉ dùng cho nhóm
+        groupName: data.isGroupChat ? data.groupName : undefined, // Chỉ dùng cho nhóm
+        body: data.body,
+        isRead: data.isRead,
+        gifUrl: data.gifUrl,
+        selectedImage: data.selectedImage,
+        reaction: data.reaction,
+        createdAt: data.createdAt
+      });
+    } catch (error) {
+      console.error('Error in addMessageToDB:', error);
+      throw error;
     }
-  
-    // Tạo tin nhắn mới
-    await MessageModel.create({
-      _id: data._id,
-      conversationId: data.isGroupChat ? undefined : data.conversationId, // Chỉ dùng cho cá nhân
-      senderId: data.senderId,
-      receiverId: data.isGroupChat ? undefined : data.receiverId, // Chỉ dùng cho cá nhân
-      senderUsername: data.senderUsername,
-      senderAvatarColor: data.senderAvatarColor,
-      senderProfilePicture: data.senderProfilePicture,
-      receiverUsername: data.isGroupChat ? undefined : data.receiverUsername, // Chỉ dùng cho cá nhân
-      receiverAvatarColor: data.isGroupChat ? undefined : data.receiverAvatarColor, // Chỉ dùng cho cá nhân
-      receiverProfilePicture: data.isGroupChat ? undefined : data.receiverProfilePicture, // Chỉ dùng cho cá nhân
-      isGroupChat: data.isGroupChat || false, // Mặc định là false nếu không truyền
-      groupId: data.isGroupChat ? data.groupId : undefined, // Chỉ dùng cho nhóm
-      groupName: data.isGroupChat ? data.groupName : undefined, // Chỉ dùng cho nhóm
-      body: data.body,
-      isRead: data.isRead,
-      gifUrl: data.gifUrl,
-      selectedImage: data.selectedImage,
-      reaction: data.reaction,
-      createdAt: data.createdAt
-    });
   }
 
   public async getUserConversationList(userId: ObjectId): Promise<IMessageData[]> {
@@ -198,14 +227,22 @@ class ChatService {
     }
   }
 
-  public async markMessagesAsRead(senderId: ObjectId, receiverId: ObjectId): Promise<void> {
-    const query = {
-      $or: [
-        { senderId, receiverId, isRead: false },
-        { senderId: receiverId, receiverId: senderId, isRead: false }
-      ]
-    };
-    await MessageModel.updateMany(query, { $set: { isRead: true } }).exec();
+  public async markMessagesAsRead(senderId: ObjectId | string, receiverId: ObjectId | string): Promise<void> {
+    try {
+      const senderObjectId = toObjectId(senderId);
+      const receiverObjectId = toObjectId(receiverId);
+      
+      const query = {
+        $or: [
+          { senderId: senderObjectId, receiverId: receiverObjectId, isRead: false },
+          { senderId: receiverObjectId, receiverId: senderObjectId, isRead: false }
+        ]
+      };
+      await MessageModel.updateMany(query, { $set: { isRead: true } }).exec();
+    } catch (error) {
+      console.error('Error in markMessagesAsRead:', error);
+      throw error;
+    }
   }
 
   public async updateMessageReaction(messageId: ObjectId, senderName: string, reaction: string, type: 'add' | 'remove'): Promise<void> {
