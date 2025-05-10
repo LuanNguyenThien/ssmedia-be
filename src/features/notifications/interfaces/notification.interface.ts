@@ -10,7 +10,9 @@ export interface INotificationDocument extends Document {
   createdItemId: mongoose.Types.ObjectId;
   comment: string;
   reaction: string;
+  post_analysis?: string;
   post: string;
+  htmlPost?: string;
   imgId: string;
   imgVersion: string;
   gifUrl: string;
@@ -29,7 +31,9 @@ export interface INotification {
   createdAt: Date;
   comment: string;
   reaction: string;
+  post_analysis: string;
   post: string;
+  htmlPost?: string;
   imgId: string;
   imgVersion: string;
   gifUrl: string;

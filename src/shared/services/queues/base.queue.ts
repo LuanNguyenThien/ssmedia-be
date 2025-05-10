@@ -1,4 +1,4 @@
-import Queue, { Job } from 'bull';
+import Queue, { Job, JobOptions } from 'bull';
 import Logger from 'bunyan';
 import { ExpressAdapter, createBullBoard, BullAdapter } from '@bull-board/express';
 import { config } from '@root/config';
@@ -13,6 +13,7 @@ import { IBlockedUserJobData, IFollowerJobData } from '@follower/interfaces/foll
 import { INotificationJobData } from '@notification/interfaces/notification.interface';
 import { IFileImageJobData } from '@image/interfaces/image.interface';
 import { IChatJobData, IMessageData } from '@chat/interfaces/chat.interface';
+import { IMediaProcessingJob } from '@post/interfaces/post-media.interface';
 // import { redisService } from '@service/redis/redis.service';
 // import RedisManager from '@service/redis/redis.service';
 // import { getRedisClient, releaseRedisClient } from '@service/redis/redis-pool';
@@ -33,7 +34,8 @@ type IBaseJobData =
   | IFavPostDocument
   | IGroupChatJob
   | IGroupChat
-  | IGroupChatDocument;
+  | IGroupChatDocument
+  | IMediaProcessingJob;
 
 let bullAdapters: BullAdapter[] = [];
 export let serverAdapter: ExpressAdapter;
@@ -265,11 +267,20 @@ export abstract class BaseQueue {
     });
   }
 
-  protected async addJob(name: string, data: IBaseJobData): Promise<void> {
-    await this.queue.add(name, data, {
+  protected async addJob(name: string, data: IBaseJobData, options?: JobOptions): Promise<Job> {
+    // Các tùy chọn mặc định
+    const defaultOptions: JobOptions = {
       attempts: 3,
-      backoff: { type: 'fixed', delay: 5000 },
-    });
+      backoff: { type: 'fixed', delay: 5000 }
+    };
+  
+    // Hợp nhất options từ người dùng với options mặc định
+    // options từ người dùng sẽ ghi đè lên options mặc định nếu cùng key
+    const mergedOptions: JobOptions = { ...defaultOptions, ...options };
+  
+    // Thêm job vào queue và trả về job instance
+    const job = await this.queue.add(name, data, mergedOptions);
+    return job;
   }
 
   protected processJob(name: string, concurrency: number, callback: Queue.ProcessCallbackFunction<void>): void {

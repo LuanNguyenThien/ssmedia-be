@@ -44,5 +44,9 @@
       "@statistics/*": ["src/features-admin/statistics/*"],
       "@root/*": ["src/*"]
     }
-  }
+  }, 
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts"
+  ]
 }

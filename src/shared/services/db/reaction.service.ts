@@ -57,10 +57,12 @@ class ReactionService {
         createdAt: new Date(),
         comment: '',
         post: postDoc?.post,
+        htmlPost: postDoc?.htmlPost,
         imgId: postDoc?.imgId || '',
         imgVersion: postDoc?.imgVersion || '',
         gifUrl: postDoc?.gifUrl || '',
-        reaction: type!
+        reaction: type!,
+        post_analysis: ''
       };
 
       // Parallelize notification insert, socket emit, and email queue

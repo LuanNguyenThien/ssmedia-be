@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+import * as cheerio from 'cheerio';
 import { Job, DoneCallback } from 'bull';
 import Logger from 'bunyan';
 import { config } from '@root/config';
@@ -7,6 +9,9 @@ import { postServiceAI } from '@api-serverAI/post/post.AIservice';
 import { Update } from '@post/controllers/update-post';
 import { IPostDocument } from '@post/interfaces/post.interface';
 import { cache } from '@service/redis/cache';
+import { INotificationDocument } from '@notification/interfaces/notification.interface';
+import { NotificationModel } from '@notification/models/notification.schema';
+import { Helpers } from '@global/helpers/helpers';
 
 const postCache = cache.postCache;
 
@@ -15,11 +20,102 @@ const log: Logger = config.createLogger('postWorker');
 const W1 = 1.0, W2 = 0.5, W3 = 10.0, W4 = 10.0, W5 = 0.1;
 
 class PostWorker {
+  private extractContentFromHtml(html: string): {mediaItems: Array<{type: string, url: string}> } {
+    if (!html) {
+      return { mediaItems: [] };
+    }
+  
+    // Use cheerio for server-side HTML parsing
+    const $ = cheerio.load(html);
+    
+    // Extract media items
+    const mediaItems: Array<{type: string, url: string}> = [];
+    
+    // Extract images
+    $('img').each((_, el) => {
+      const url = $(el).attr('src');
+      if (url) {
+        mediaItems.push({ type: 'image', url });
+      }
+    });
+    
+    // Extract videos
+    $('video').each((_, el) => {
+      const url = $(el).attr('src');
+      if (url) {
+        mediaItems.push({ type: 'video', url });
+      }
+    });
+    
+    // Extract audio
+    $('audio').each((_, el) => {
+      const url = $(el).attr('src');
+      if (url) {
+        mediaItems.push({ type: 'audio', url });
+      }
+    });
+    
+    return { mediaItems };
+  }
+  /**
+   * Select a subset of media items for analysis
+   * @param mediaItems All media items extracted from the HTML
+   * @param maxImages Maximum number of images to select (default: 5)
+   * @param maxVideos Maximum number of videos to select (default: 1)
+   * @param maxAudios Maximum number of audio files to select (default: 1)
+   * @returns Selected media items organized by type
+   */
+  private selectMediaForAnalysis(
+    mediaItems: Array<{type: string, url: string}>,
+    maxImages: number = 5,
+    maxVideos: number = 1, 
+    maxAudios: number = 1
+  ): { 
+    imageUrls: string[], 
+    videoUrls: string[], 
+    audioUrls: string[] 
+  } {
+    // Separate media items by type
+    const images = mediaItems.filter(item => item.type === 'image');
+    const videos = mediaItems.filter(item => item.type === 'video');
+    const audios = mediaItems.filter(item => item.type === 'audio');
+    
+    // Helper function to shuffle an array
+    const shuffle = <T>(array: T[]): T[] => {
+      const newArray = [...array];
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      return newArray;
+    };
+    
+    // Randomly select media items, up to the specified maximums
+    const selectedImages = shuffle(images).slice(0, maxImages);
+    const selectedVideos = shuffle(videos).slice(0, maxVideos);
+    const selectedAudios = shuffle(audios).slice(0, maxAudios);
+    
+    return {
+      imageUrls: selectedImages.map(item => item.url),
+      videoUrls: selectedVideos.map(item => item.url),
+      audioUrls: selectedAudios.map(item => item.url)
+    };
+  }
   public async analyzePostContent(job: Job, done: DoneCallback): Promise<void> {
     console.log('Job Data: ', job.data);
     const { value } = job.data;
 
     try {
+      // Extract media items from HTML content
+      const { mediaItems } = postWorker.extractContentFromHtml(value.htmlPost);
+      // Select a subset of media items for analysis
+      const { imageUrls, videoUrls, audioUrls } = postWorker.selectMediaForAnalysis(mediaItems);
+      // Prepare the data for analysis
+      value.mediaItems = {
+        images: imageUrls,
+        videos: videoUrls,
+        audios: audioUrls,  
+      };
       const response = await postServiceAI.analyzePostContent(value);
       const analysisResult = JSON.parse(response);
 
@@ -29,6 +125,7 @@ class PostWorker {
       const educationalValue = analysisResult['Educational Value'];
       const relevanceToLearningCommunity = analysisResult['Relevance to Learning Community'];
       const appropriateness = analysisResult['Content Appropriateness'];
+      const reasoning = analysisResult['Reasoning'];
 
       // Log các giá trị để kiểm tra
       console.log('Educational Value:', educationalValue);
@@ -41,7 +138,8 @@ class PostWorker {
 
       if ((educationalValue < 2 && relevanceToLearningCommunity < 2) || appropriateness === 'Not Appropriate') {
         // Xử lý khi nội dung không phù hợp
-        const message = 'Bài viết của bạn vào lúc '+ value.createdAt+ ' có nội dung không phù hợp, vui lòng chỉnh sửa lại!';
+        const formattedDate = Helpers.formattedDate(value.createdAt.toString());
+        const message = 'Your post at '+ formattedDate + ' has been flagged as inappropriate. Please review the content.';
         console.log(value.userId);
         socketIONotificationObject.emit('post analysis', message, {userId: value.userId} );
 
@@ -60,6 +158,25 @@ class PostWorker {
         } as IPostDocument;
 
         await Update.prototype.serverUpdatePost(value._id, updatedPost);
+        const notificationModel: INotificationDocument = new NotificationModel();
+        const notifications = await notificationModel.insertNotification({
+          userFrom: '68032172bdacab3e39fed6e7',
+          userTo: value.userId,
+          message: message,
+          notificationType: 'post-analysis',
+          entityId: new mongoose.Types.ObjectId(value._id),
+          createdItemId: new mongoose.Types.ObjectId(value._id),
+          createdAt: new Date(),
+          post: value.post,
+          htmlPost: value.htmlPost,
+          imgId: value.imgId!,
+          imgVersion: value.imgVersion!,
+          gifUrl: value.gifUrl!,
+          comment: '',
+          reaction: '',
+          post_analysis: `Your post has been flagged as inappropriate. ${reasoning}  Please review the content.`
+        });
+        socketIONotificationObject.emit('insert notification', notifications, { userTo: value.userId });
       } else {
         const updatedPost: IPostDocument = {
           htmlPost: value.htmlPost,

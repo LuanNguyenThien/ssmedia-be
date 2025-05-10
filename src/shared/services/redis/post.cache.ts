@@ -588,4 +588,17 @@ export class PostCache extends BaseCache {
       throw new ServerError('Server error. Try again.');
     }
   }
+
+  public async updatePostPropertyInCache(key: string, property: string, value: any): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      
+      await this.client.HSET(`posts:${key}`, property, value);
+    } catch (error) {
+      console.error(error);
+      throw new ServerError('Error updating post property in cache');
+    }
+  }
 }
