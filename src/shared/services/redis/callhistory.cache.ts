@@ -13,11 +13,16 @@ export enum CallStatus {
 }
 
 export interface ICallLog {
+  conversationId?: string;
   callId: string;
   callerId: string;
   receiverId: string;
   callerName?: string;
+  callerAvatarColor?: string;
+  callerAvatarSrc?: string;
   receiverName?: string;
+  receiverAvatarColor?: string;
+  receiverAvatarSrc?: string;
   callType: 'audio' | 'video';
   startTime: number;
   answeredAt?: number;

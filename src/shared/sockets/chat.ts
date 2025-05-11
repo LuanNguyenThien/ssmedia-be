@@ -23,36 +23,40 @@ export class SocketIOChatHandler {
         // socket.join(receiverSocketId);
       });
 
-      socket.on('call-user', async (data: { userToCall: string, signal: any, callType: string, callerName: string, callId: string }) => {
-        const { userToCall, signal, callType, callerName, callId } = data;
+      socket.on('call-user', async (data: { receiverId: string, receiverAvatarColor: string, receiverAvatarSrc: string, userToCall: string, callerId: string, callerAvatarColor: string, callerAvatarSrc: string, callerName: string, signal: any, callType: string, callId: string, conversationId: string }) => {
+        const { receiverId, receiverAvatarColor, receiverAvatarSrc, userToCall, callerId, callerAvatarColor, callerAvatarSrc, callerName, signal, callType, callId, conversationId } = data;
         try{
           console.log(data);
           const senderSocketId: string = connectedUsersMap.get(callerName.toLowerCase()) as string;
           console.log(connectedUsersMap);
-          const receiverSocketId: string = connectedUsersMap.get(userToCall) as string;
+          const receiverSocketId: string = connectedUsersMap.get(userToCall.toLowerCase()) as string;
           // if (!receiverSocketId) {
           //   console.log(`Receiver with ID ${userToCall} is not connected.`);
           //   socket.emit('call-rejected', { message: 'User is offline' });
           //   return;
           // }
           //Kiểm tra trạng thái người nhận cuộc gọi
-          const canReceiveCall = await cache.userStatusCache.canReceiveCall(userToCall, callerName.toLowerCase());
+          const canReceiveCall = await cache.userStatusCache.canReceiveCall(receiverId, callerId);
           console.log(canReceiveCall);
           if (!canReceiveCall) {
             this.io.to(senderSocketId).emit('call-busy', { 
-              userId: userToCall,
+              userId: receiverId,
               message: 'User is busy with another call'
             });
-            return;
           }
           // Bắt đầu cuộc gọi trong cache
           const callStarted = await cache.userStatusCache.startCall(
-            callerName.toLowerCase(),
-            userToCall,
+            callerId,
+            receiverId,
             callId,
+            conversationId,
             callType === 'video' ? 'video' : 'audio',
-            callerName.toLowerCase(),
-            userToCall
+            callerName,
+            callerAvatarColor,
+            callerAvatarSrc,
+            userToCall,
+            receiverAvatarColor,
+            receiverAvatarSrc,
           );
           if(callStarted) {
             if(receiverSocketId) {
@@ -74,7 +78,7 @@ export class SocketIOChatHandler {
         try {
           if(receiverSocketId) {
             console.log(`Receiver socket ID: ${receiverSocketId}`);
-            this.io.to(receiverSocketId).emit('call-accepted', { signal, callType, from: senderSocketId, callId });
+            this.io.to(receiverSocketId).emit('call-accepted', { signal, callType, from: socket.id, callId });
           }
           // Cập nhật trạng thái cuộc gọi trong cache
           await cache.userStatusCache.acceptCall(callId);
@@ -91,7 +95,7 @@ export class SocketIOChatHandler {
         const receiverSocketId: string = connectedUsersMap.get(to) as string;
         try {
           if(receiverSocketId) {
-            this.io.to(receiverSocketId).emit('call-ended', { from: senderSocketId });
+            this.io.to(receiverSocketId).emit('call-ended', { from: socket.id });
           }
           await new Promise<void>((resolve) => {
             setTimeout(async () => {
@@ -113,7 +117,7 @@ export class SocketIOChatHandler {
         try {
           if(receiverSocketId) {
             console.log(`Receiver socket ID: ${receiverSocketId}`);
-            this.io.to(receiverSocketId).emit('call-ended', { from: senderSocketId });
+            this.io.to(receiverSocketId).emit('call-ended', { from: socket.id });
           }
           await cache.userStatusCache.endCall(callId, receiverSocketId);
         } catch (error) {

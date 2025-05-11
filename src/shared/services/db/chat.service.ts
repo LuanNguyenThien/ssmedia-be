@@ -44,6 +44,11 @@ class ChatService {
       gifUrl: data.gifUrl,
       selectedImage: data.selectedImage,
       reaction: data.reaction,
+      messageType: data.messageType,
+      callId: data.callId,
+      callType: data.callType,
+      callDuration: data.callDuration,
+      callStatus: data.callStatus,
       createdAt: data.createdAt
     });
   }
