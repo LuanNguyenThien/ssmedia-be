@@ -41,41 +41,30 @@ export class Get {
   //   }
   //   res.status(HTTP_STATUS.OK).json({ message: 'All posts', posts, totalPosts });
   // }
+  
   public async posts(req: Request, res: Response): Promise<void> {
-    const { page } = req.params;
-    const userId = req.currentUser!.userId;
-    const skip: number = (parseInt(page) - 1) * PAGE_SIZE;
-    const limit: number = PAGE_SIZE;
-    let posts: IPostDocument[] = [];
-    let totalPosts = 0;
-
-    // Tạo khóa Redis duy nhất cho mỗi người dùng
-    const redisKey = `user:${userId}:posts`;
-    // Lấy bài viết từ Redis
-    const cachedPosts: IPostDocument[] = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
-    if (cachedPosts.length === limit) {
-      posts = cachedPosts;
-      totalPosts = await postService.postsCount();
-    } else {
-      // Lấy thêm bài viết từ MongoDB
-      const redisCount = await postCache.getTotalPostsforUser(redisKey);
-      const mongoSkip = redisCount;
-      const mongoLimit = REDIS_BATCH_SIZE;
-      const newPosts = await postService.getPostsforUserByVector(userId, mongoSkip, mongoLimit);
+    try {
+      const { page } = req.params;
+      const userId = req.currentUser!.userId;
+      const skip: number = (parseInt(page) - 1) * PAGE_SIZE;
+      const limit: number = PAGE_SIZE;
       
-      if (newPosts.length === 0) {
-        posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
-        totalPosts = redisCount;
-      } else {
-        const formattedPosts = newPosts
-          .map(post => ({ _id: post._id as string, score: post.score as number }));
-        await postCache.savePostsforUserToCache(redisKey, formattedPosts);
-
-        posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
-        totalPosts = await postService.postsCount();
-      }
+      // Direct database query approach for reliability
+      const posts = await postService.getPostsforUserByVector(userId, skip, limit);
+      const totalPosts = await postService.postsCount();
+      
+      res.status(HTTP_STATUS.OK).json({ 
+        message: 'All posts', 
+        posts, 
+        totalPosts 
+      });
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ 
+        message: 'Error fetching posts',
+        error: (error as Error).message
+      });
     }
-    res.status(HTTP_STATUS.OK).json({ message: 'All posts', posts, totalPosts });
   }
 
   public async postsWithImages(req: Request, res: Response): Promise<void> {

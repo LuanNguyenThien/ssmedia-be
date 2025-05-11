@@ -47,7 +47,11 @@ export class ReactionCache extends BaseCache {
       const response: string[] = await this.client.LRANGE(`reactions:${key}`, 0, -1);
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();
       const userPreviousReaction: IReactionDocument = this.getPreviousReaction(response, username) as IReactionDocument;
-      multi.LREM(`reactions:${key}`, 1, JSON.stringify(userPreviousReaction));
+      if (userPreviousReaction) {
+        multi.LREM(`reactions:${key}`, 1, JSON.stringify(userPreviousReaction));
+      } else {
+        log.warn(`No previous reaction found for user: ${username} on post: ${key}`);
+      }
       await multi.exec();
 
       await this.client.HSET(`posts:${key}`, 'reactions', JSON.stringify(postReactions));
