@@ -193,6 +193,7 @@ class UserService {
   private aggregateProject() {
     return {
       _id: 1,
+      isBanned: '$authId.isBanned',
       username: '$authId.username',
       uId: '$authId.uId',
       email: '$authId.email',

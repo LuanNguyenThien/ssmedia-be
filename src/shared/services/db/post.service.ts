@@ -29,8 +29,8 @@ class PostService {
       postQuery = query;
     }
 
-     postQuery.isHidden = { $ne: true };
-     
+    postQuery.isHidden = { $ne: true };
+
     // Xử lý lọc theo ngày
     if (query.startDate || query.endDate) {
       postQuery.createdAt = {};
@@ -57,9 +57,14 @@ class PostService {
     endOfDay.setHours(23, 59, 59, 999);
 
     const count = await PostModel.countDocuments({
-      createdAt: { $gte: startOfDay, $lte: endOfDay },
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
     });
 
+    return count;
+  }
+
+  public async postsCountAdmin(): Promise<number> {
+    const count: number = await PostModel.find().countDocuments();
     return count;
   }
 

@@ -23,7 +23,7 @@ export class Get {
 
   public async getPostStats(req: Request, res: Response): Promise<void> {
     try {
-      const totalPosts = await postService.postsCount();
+      const totalPosts = await postService.postsCountAdmin();
       const postsToday = await postService.countPostsToday();
 
       res.status(HTTP_STATUS.OK).json({

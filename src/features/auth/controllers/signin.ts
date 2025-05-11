@@ -49,7 +49,7 @@ export class SignIn {
   }
 
   public async checkBanStatus(req: Request, res: Response): Promise<void> {
-    const { authId } = req.body; 
+    const { authId } = req.params; 
     
     const isBanned = await authService.isUserBanned(authId);
 
