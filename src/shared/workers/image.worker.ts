@@ -2,6 +2,7 @@ import { DoneCallback, Job } from 'bull';
 import Logger from 'bunyan';
 import { config } from '@root/config';
 import { imageService } from '@service/db/image.service';
+import { IFileImageJobData } from '@image/interfaces/image.interface';
 
 const log: Logger = config.createLogger('imageWorker');
 
@@ -52,6 +53,14 @@ class ImageWorker {
       log.error(error);
       done(error as Error);
     }
+  }
+
+  async addGroupAvatarImageToDB(job: Job): Promise<void> {
+    const { key, value, imgId, imgVersion } = job.data as IFileImageJobData;
+    if (!key || !value || !imgId || !imgVersion) {
+      throw new Error('Missing required image data for group avatar');
+    }
+    await imageService.addGroupAvatarImageToDB(key, value, imgId, imgVersion);
   }
 }
 

@@ -1,3 +1,5 @@
+import { GroupChat } from '@group-chat/controllers/group-chat';
+import { GroupChatModel } from '@group-chat/models/group-chat.schema';
 import { IFileImageDocument } from '@image/interfaces/image.interface';
 import { ImageModel } from '@image/models/image.schema';
 import { UserModel } from '@user/models/user.schema';
@@ -12,6 +14,11 @@ class ImageService {
   public async addBackgroundImageToDB(userId: string, imgId: string, imgVersion: string): Promise<void> {
     await UserModel.updateOne({ _id: userId }, { $set: { bgImageId: imgId, bgImageVersion: imgVersion } }).exec();
     await this.addImage(userId, imgId, imgVersion, 'background');
+  }
+
+  public async addGroupAvatarImageToDB(groupId: string, url: string, imgId: string, imgVersion: string): Promise<void> {
+    await GroupChatModel.updateOne({ _id: groupId }, { $set: { avatar: url } }).exec();
+    await this.addImage(groupId, imgId, imgVersion, 'group');
   }
 
   public async addImage(userId: string, imgId: string, imgVersion: string, type: string): Promise<void> {
