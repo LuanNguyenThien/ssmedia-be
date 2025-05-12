@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from 'http-status-codes';
-import { ObjectId } from 'mongodb';
-import { joiValidation } from '@global/decorators/joi-validation.decorators';
 import { BadRequestError } from '@global/helpers/error-handler';
 import { ICommentDocument } from '@comment/interfaces/comment.interface';
 import { CommentsModel } from '@comment/models/comment.schema';
 import { PostModel } from '@post/models/post.schema';
 import mongoose from 'mongoose';
+import { CommentCache } from '@service/redis/comment.cache';
+
+const commentCache: CommentCache = new CommentCache();
 
 export class Delete {
   public async comment(req: Request, res: Response): Promise<void> {
@@ -30,7 +31,10 @@ export class Delete {
     
     // Delete the comment
     await CommentsModel.deleteOne({ _id: commentId });
-    
+
+    // Delete the comment from the cache
+    await commentCache.deletePostCommentFromCache(postId, commentId);
+   
     // Decrement the commentsCount in the post
     await PostModel.updateOne(
       { _id: postId },

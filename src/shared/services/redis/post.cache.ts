@@ -163,7 +163,7 @@ export class PostCache extends BaseCache {
       }
       const serializedPosts = posts.map(post => JSON.stringify({ _id: post._id, score: post.score }));
       await this.client.rPush(key, serializedPosts);
-      await this.client.expire(key, 300); // Đặt TTL là 5 phút (300 giây)
+      await this.client.expire(key, 30); // Đặt TTL là 5 phút (300 giây)
     } catch (error) {
       log.error("Lỗi ở đây", error, key, posts);
       throw new ServerError('Server error. Try again.');

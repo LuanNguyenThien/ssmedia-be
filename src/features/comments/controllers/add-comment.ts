@@ -8,12 +8,15 @@ import { commentQueue } from '@service/queues/comment.queue';
 import { UploadApiResponse } from 'cloudinary';
 import { uploads } from '@global/helpers/cloudinary-upload';
 import { BadRequestError } from '@global/helpers/error-handler';
+import { CommentCache } from '@service/redis/comment.cache';
+
+const commentCache: CommentCache = new CommentCache();
 
 export class Add {
   @joiValidation(addCommentSchema)
   public async comment(req: Request, res: Response): Promise<void> {
     const { userTo, postId, profilePicture, comment, selectedImage, parentId } = req.body;
-    let fileUrl= '';
+    let fileUrl = '';
     if (selectedImage.length) {
       const result: UploadApiResponse = (await uploads(req.body.selectedImage)) as UploadApiResponse;
       if (!result?.public_id) {
@@ -45,6 +48,8 @@ export class Add {
       username: req.currentUser!.username,
       comment: commentData
     };
+    await commentCache.savePostCommentToCache(postId, JSON.stringify(commentData));
+
     commentQueue.addCommentJob('addCommentToDB', databaseCommentData);
     res.status(HTTP_STATUS.OK).json({ message: 'Comment created successfully' });
   }
