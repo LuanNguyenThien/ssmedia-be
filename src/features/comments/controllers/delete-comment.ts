@@ -5,9 +5,8 @@ import { ICommentDocument } from '@comment/interfaces/comment.interface';
 import { CommentsModel } from '@comment/models/comment.schema';
 import { PostModel } from '@post/models/post.schema';
 import mongoose from 'mongoose';
-import { CommentCache } from '@service/redis/comment.cache';
-
-const commentCache: CommentCache = new CommentCache();
+import { cache } from '@service/redis/cache';
+const commentCache = cache.commentCache;
 
 export class Delete {
   public async comment(req: Request, res: Response): Promise<void> {

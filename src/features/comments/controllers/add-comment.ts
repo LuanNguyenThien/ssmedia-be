@@ -8,10 +8,10 @@ import { commentQueue } from '@service/queues/comment.queue';
 import { UploadApiResponse } from 'cloudinary';
 import { uploads } from '@global/helpers/cloudinary-upload';
 import { BadRequestError } from '@global/helpers/error-handler';
-import { CommentCache } from '@service/redis/comment.cache';
+import { cache } from '@service/redis/cache';
 
-const commentCache: CommentCache = new CommentCache();
 
+const commentCache = cache.commentCache;
 export class Add {
   @joiValidation(addCommentSchema)
   public async comment(req: Request, res: Response): Promise<void> {
