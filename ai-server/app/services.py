@@ -388,7 +388,7 @@ async def analyze_content(content, id, image_urls=None, video_urls=None, audio_u
         traceback.print_exc()
         return {"error": str(e)}
     
-async def vectorize_query(query, image=None):
+async def vectorize_query(query, image=None, userInterest=None):
     try:
         if image is not None:
             # Giải mã base64 nếu cần
@@ -408,7 +408,10 @@ async def vectorize_query(query, image=None):
                     except Exception as e:
                         print(f"Error fetching image from URL: {str(e)}")
                         image = None
-        query = await clarify_text_for_vectorization(query, image)
+        if (query is not None and query != '') or (image is not None):
+            query = await clarify_text_for_vectorization(query, image)
+        if userInterest is not None:
+            query = f"{query} {userInterest}"
         preprocessed_query = preprocess_text(query)
         print(f"Preprocessed query: {preprocessed_query}")
         vector = get_albert_embedding(preprocessed_query)

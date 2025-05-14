@@ -94,7 +94,7 @@ export class Get {
       console.time('posts');  
       const { page } = req.params;
       const userId = req.currentUser!.userId;
-      const skip: number = (parseInt(page) - 1) * PAGE_SIZE;
+      let skip: number = (parseInt(page) - 1) * PAGE_SIZE;
       const limit: number = PAGE_SIZE;
       let posts: IPostDocument[] = [];
       let totalPosts = 0;
@@ -118,7 +118,9 @@ export class Get {
           totalPosts = redisCount;
         } else {
           const formattedPosts = newPosts.map((post) => ({ _id: post._id as string, score: post.score as number }));
+          console.log(formattedPosts);
           await postCache.savePostsforUserToCache(redisKey, formattedPosts);
+          if(redisCount === 0) { skip = 0; }
 
           posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
           totalPosts = await postService.postsCount();

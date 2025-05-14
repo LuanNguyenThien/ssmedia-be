@@ -63,7 +63,10 @@ async def vectorize(request: VectorizeRequest):
         image = value.get('image', None)
         if image == '':
             image = None
-        vector_query = await vectorize_query(query_text, image)  # Tiền xử lý văn bản với hình ảnh
+        userInterest = value.get('userInterest', None)
+        if userInterest == '':
+            userInterest = None
+        vector_query = await vectorize_query(query_text, image, userInterest)  # Tiền xử lý văn bản với hình ảnh và sở thích người dùng
         return JSONResponse(content={"vector": vector_query.tolist()})  # Trả lại vector dưới dạng JSON
     except Exception as e:
         print("Error:", str(e))

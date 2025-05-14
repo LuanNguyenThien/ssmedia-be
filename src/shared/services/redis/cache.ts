@@ -6,6 +6,7 @@ import { CommentCache } from "./comment.cache";
 import { ReactionCache } from "./reaction.cache";
 import { GroupMessageCache } from "./group-message.cache";
 import { UserStatusCache } from "./user.status.cache";
+import { UserBehaviorCache } from "./user.behavior.cache";
 
 
 class Cache {
@@ -18,6 +19,7 @@ class Cache {
     public reactionCache: ReactionCache;
     public groupMessageCache: GroupMessageCache;
     public userStatusCache: UserStatusCache;
+    public userBehaviorCache: UserBehaviorCache;
   
     private constructor() {
       this.userCache = new UserCache();
@@ -28,6 +30,7 @@ class Cache {
       this.reactionCache = new ReactionCache();
       this.groupMessageCache = new GroupMessageCache();
       this.userStatusCache = new UserStatusCache();
+      this.userBehaviorCache = new UserBehaviorCache();
     }
   
     public static getInstance(): Cache {

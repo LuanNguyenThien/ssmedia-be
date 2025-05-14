@@ -16,6 +16,8 @@ import { cache } from '@service/redis/cache';
 
 // const userCache: UserCache = new UserCache();
 const userCache = cache.userCache;
+const userBehaviorCache = cache.userBehaviorCache;
+const postCache = cache.postCache;
 
 class ReactionService {
   public async addReactionDataToDB(reactionData: IReactionJob): Promise<void> {
@@ -43,6 +45,11 @@ class ReactionService {
         ).lean() // Use lean for performance
       ])) as unknown as [IUserDocument, IReactionDocument, IPostDocument];
 
+      if(type === 'upvote' && postDoc) {
+        await postCache.clearPersonalizedPostsCache(userFrom as string);
+        // Save user interests from the post analysis
+        await userBehaviorCache.saveUserInterests(userFrom as string, postId, postDoc);
+      }
       // Early exit if notification is not needed
       if (!userDoc?.notifications?.reactions || userTo === userFrom) return;
 

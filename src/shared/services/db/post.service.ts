@@ -4,8 +4,10 @@ import { IUserDocument } from '@user/interfaces/user.interface';
 import { UserModel } from '@user/models/user.schema';
 import { Query, UpdateQuery } from 'mongoose';
 import { cache } from '@service/redis/cache';
+import { textServiceAI } from '@api-serverAI/text/text.AIservice';
 
 const postCache = cache.postCache;
+const userbehaviorCache = cache.userBehaviorCache;
 
 class PostService {
   public async addPostToDB(userId: string, createdPost: IPostDocument): Promise<void> {
@@ -61,82 +63,126 @@ class PostService {
     await Promise.all([updatePost]);
   }
 
-  public async getPostsforUserByVector(userId: string, skip: number = 0, limit: number = 10): Promise<IPostDocument[]> {
-    try {
-      const user: IUserDocument | null = await UserModel.findById(userId);
-      if (!user) {
-        // If user not found, return recent posts as fallback
-        return this.getPosts({}, skip, limit, { createdAt: -1 });
+   public async getPostsforUserByVector(userId: string, mongoSkip: number, mongoLimit: number): Promise<IPostDocument[]> {
+    const user: IUserDocument | null = await UserModel.findById(userId);
+    if (!user) {
+      return [];
+    } else {
+      let userVector: number[] = user.user_vector as number[];
+      console.log(userVector);
+      const userInterest: string[] = await userbehaviorCache.getUserInterests(userId);
+      console.log('User interests:', userInterest);
+      if (userInterest.length > 0) {
+        let combinedText = '';
+        if(user.quote || user.school || user.work || user.location) {
+          combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
+        }
+        const response = await textServiceAI.vectorizeText({ query: combinedText, userInterest });
+        const updatedUserVector: number[] = response.vector;
+        console.log('Updated user vector:', updatedUserVector);
+        await UserModel.updateOne({ _id: userId }, { $set: { user_vector: updatedUserVector } });
+        userVector = updatedUserVector;
       }
-      
-      const userVector: number[] = user.user_vector as number[];
-      
-      // If user has no vector (no interests/preferences), return trending posts
       if (!userVector || userVector.length === 0) {
-        console.log(`User ${userId} has no vector, returning trending posts instead`);
-        return this.getPosts({}, skip, limit, { createdAt: -1 });
+        const posts = await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
+        return posts;
+
       }
-      
-      // Get personalized posts using vector similarity
-      return this.searchPostsByVector(userVector, skip, limit);
-    } catch (error) {
-      console.error('Error in getPostsforUserByVector:', error);
-      // Fallback to recent posts if there's an error
-      return this.getPosts({}, skip, limit, { createdAt: -1 });
+      const posts = await this.searchPostsByVector(userVector, mongoSkip, mongoLimit, userId);
+      return posts;
+
+
+
+
+
     }
   }
 
   public async searchPostsByVector(
     queryVector: number[],
-    skip: number = 0,
-    limit: number = 10
+    mongoSkip?: number,
+    mongoLimit?: number,
+    userId?: string
   ): Promise<IPostDocument[]> {
-    try {
-      const pipeline: any[] = [
-        {
-          $vectorSearch: {
-            index: 'vectorPost_index',
-            path: 'post_embedding',
-            queryVector: queryVector,
-            numCandidates: skip + limit + 100, // Get enough candidates to handle skip + limit
-            limit: skip + limit // Get enough results to handle the skip
-          }
-        } as any,
-        {
-          $match: {
-            privacy: { $ne: 'Private' }, // Filter out private posts
-            isHidden: { $ne: true }      // Filter out hidden posts
-          }
-        },
-        {
-          $project: {
-            analysis: 0,
-            post_embedding: 0,
-            score: {
-              $meta: 'vectorSearchScore'
-            }
-          }
-        },
-        {
-          $sort: {
-            score: -1 // Sort by relevance score
-          }
-        },
-        {
-          $skip: skip
-        },
-        {
-          $limit: limit
-        }
-      ];
-
-      const posts = await PostModel.aggregate(pipeline).exec();
-      return posts;
-    } catch (error) {
-      console.error('Error in searchPostsByVector:', error);
-      // If vector search fails, fallback to regular post query
-      return this.getPosts({}, skip, limit, { createdAt: -1 });
+    // const pipeline: (PipelineStage | PipelineStage.CustomStages)[] = [
+    //   {
+    //     $vectorSearch: {
+    //       index: "vectorPost_index",
+    //       path: "post_embedding",
+    //       queryVector: queryVector,
+    //       numCandidates: 25,
+    //       limit: 3
+    //     }
+    //   },
+    //   {
+    //     $project: {
+    //       _id: 1,
+    //       username: 1,
+    //       post: 1,
+    //       score: {
+    //         $meta: 'vectorSearchScore'
+    //       }
+    //     }
+    //   },
+    //   {
+    //     $sort: {
+    //       score: -1  // Sắp xếp theo điểm liên quan
+    //     }
+    //   }
+    // ];
+    let allCachedPosts: IPostDocument[] = [];
+    if (mongoLimit !== undefined && mongoSkip !== undefined) {
+      allCachedPosts = await postCache.getAllPostsforUserFromCache(userId as string);
     }
+    const pipeline: any[] = [
+      {
+        $vectorSearch: {
+          index: 'vectorPost_index',
+          path: 'post_embedding',
+          queryVector: queryVector,
+          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit*5 : 200,
+          limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit*1.5 : 10,
+          filter: {
+            privacy: { $ne: 'Private' }
+          }
+        }
+      } as any,
+      {
+        $project: {
+          analysis: 0,
+          post_embedding: 0,
+          score: {
+            $meta: 'vectorSearchScore'
+          }
+        }
+      },
+      {
+        $sort: {
+          score: -1 // Sort by relevance score
+        }
+      }
+    ];
+    console.log('Pipeline:', JSON.stringify(pipeline, null, 2));
+
+    const mongoPosts = await PostModel.aggregate(pipeline).exec();
+    if (mongoSkip !== undefined && mongoLimit !== undefined) {
+      // pipeline.push(
+      //   {
+      //     $skip: mongoSkip  // Bỏ qua các kết quả trước đó
+      //   },
+      //   {
+      //     $limit: mongoLimit  // Giới hạn số lượng kết quả trả về
+      //   }
+      // );
+      console.log('Mongo posts:', mongoPosts.length);
+      const combinedPosts = [...allCachedPosts, ...mongoPosts];
+      const uniquePosts = Array.from(new Set(combinedPosts.map((post) => post._id.toString()))).map((id) =>
+        combinedPosts.find((post) => post._id.toString() === id)
+      );
+
+      return uniquePosts.slice(allCachedPosts.length as number, ((allCachedPosts.length as number) + mongoLimit) as number);
+    }
+    return mongoPosts;
   }
 
   public async hidePost(postId: string): Promise<void> {
