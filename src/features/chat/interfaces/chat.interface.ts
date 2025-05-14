@@ -49,6 +49,11 @@ export interface IMessageData {
   createdAt: Date | string;
   deleteForMe: boolean;
   deleteForEveryone: boolean;
+  messageType?: string;
+  callId?: string;
+  callType?: string;
+  callDuration?: number;
+  callStatus?: string;
 }
 
 export interface IMessageNotification {

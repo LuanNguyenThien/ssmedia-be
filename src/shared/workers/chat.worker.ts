@@ -2,6 +2,7 @@ import { config } from '@root/config';
 import { chatService } from '@service/db/chat.service';
 import { DoneCallback, Job } from 'bull';
 import Logger from 'bunyan';
+import { ObjectId } from 'mongodb';
 
 const log: Logger = config.createLogger('chatWorker');
 
@@ -32,6 +33,14 @@ class ChatWorker {
   async markMessagesAsReadInDB(jobQueue: Job, done: DoneCallback): Promise<void> {
     try {
       const { senderId, receiverId } = jobQueue.data;
+      
+      // Skip processing for system messages
+      if (senderId === 'system') {
+        jobQueue.progress(100);
+        done(null, jobQueue.data);
+        return;
+      }
+      
       await chatService.markMessagesAsRead(senderId, receiverId);
       jobQueue.progress(100);
       done(null, jobQueue.data);

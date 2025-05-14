@@ -3,8 +3,14 @@ import Logger from 'bunyan';
 import { config } from '@root/config';
 import { CallHistoryCache } from './callhistory.cache';
 import { CallStatus } from './callhistory.cache';
+import { MessageCache } from './message.cache';
+import { chatService } from '@service/db/chat.service';
+import { IMessageData } from '@chat/interfaces/chat.interface';
+import { socketIOChatObject } from '@socket/chat';
+import { ObjectId } from 'mongodb';
 
 const callHistoryCache = new CallHistoryCache();
+const messageCache = new MessageCache();
 const log: Logger = config.createLogger('userStatusCache');
 
 // Đơn giản hóa enum để tập trung vào trạng thái cuộc gọi
@@ -83,16 +89,40 @@ export class UserStatusCache extends BaseCache {
    */
   public async startCall(
     callerId: string, 
-    receiverId: string, 
-    callId: string, 
+    receiverId: string,
+    callId: string,
+    conversationId: string,
     callType: 'audio' | 'video',
     callerName?: string,
-    receiverName?: string
+    callerAvatarColor?: string,
+    callerAvatarSrc?: string,
+    receiverName?: string,
+    receiverAvatarColor?: string,
+    receiverAvatarSrc?: string
   ): Promise<boolean> {
     try {
       // Kiểm tra người nhận có thể nhận cuộc gọi không
       const canReceive = await this.canReceiveCall(receiverId, callerId);
       if (!canReceive) {
+        const callData = {
+          conversationId,
+          callId,
+          callerId,
+          receiverId,
+          callerName,
+          callerAvatarColor,
+          callerAvatarSrc,
+          receiverName,
+          receiverAvatarColor,
+          receiverAvatarSrc,
+          callType,
+          startTime: Date.now(),
+          endedAt: Date.now(), // Kết thúc ngay lập tức
+          status: CallStatus.MISSED, // Hoặc có thể sử dụng REJECTED tùy vào ngữ cảnh
+          endedBy: 'system'
+        };
+        await callHistoryCache.saveCall(callData);
+        await this.missedCall(callId);
         return false;
       }
 
@@ -127,11 +157,16 @@ export class UserStatusCache extends BaseCache {
       
       // Lưu thông tin cuộc gọi vào CallHistoryCache
       await callHistoryCache.saveCall({
+        conversationId,
         callId,
         callerId,
         receiverId,
         callerName,
+        callerAvatarColor,
+        callerAvatarSrc,
         receiverName,
+        receiverAvatarColor,
+        receiverAvatarSrc,
         callType,
         startTime: Date.now(),
         status: CallStatus.INITIATED
@@ -186,7 +221,7 @@ export class UserStatusCache extends BaseCache {
       await callHistoryCache.rejectCall(callId);
       
       // Sau khi từ chối, tạo tin nhắn cho cuộc trò chuyện
-      // await this.createCallMessage(call);
+      await this.createCallMessage(call);
     } catch (error) {
       log.error(error);
     }
@@ -212,7 +247,7 @@ export class UserStatusCache extends BaseCache {
       await callHistoryCache.missedCall(callId);
       
       // Tạo tin nhắn cho cuộc trò chuyện
-      // await this.createCallMessage(call);
+      await this.createCallMessage(call);
     } catch (error) {
       log.error(error);
     }
@@ -244,7 +279,7 @@ export class UserStatusCache extends BaseCache {
       await callHistoryCache.endCall(callId, endedBy);
       
       // Tạo tin nhắn cho cuộc trò chuyện
-      // await this.createCallMessage(call);
+      await this.createCallMessage(call);
     } catch (error) {
       log.error(error);
     }
@@ -290,56 +325,75 @@ export class UserStatusCache extends BaseCache {
   /**
    * Tạo tin nhắn từ thông tin cuộc gọi
    */
-  // private async createCallMessage(call: any): Promise<void> {
-  //   try {
-  //     const { callId, callerId, receiverId, callType } = call;
+  private async createCallMessage(call: any): Promise<void> {
+    try {
+      const { callId, callerId, callerName, callerAvatarColor, callerAvatarSrc, receiverId, receiverName, receiverAvatarColor, receiverAvatarSrc, callType, conversationId } = call;
+
+      // Lấy thông tin cuộc gọi đã cập nhật
+      const updatedCall = await callHistoryCache.getCall(callId);
+      if (!updatedCall) return;
       
-  //     // Lấy thông tin cuộc gọi đã cập nhật
-  //     const updatedCall = await callHistoryCache.getCall(callId);
-  //     if (!updatedCall) return;
+      let messageContent = '';
+      const messageType = 'call_log';
       
-  //     let messageContent = '';
-  //     const messageType = 'call_log';
+      // Tạo nội dung tin nhắn dựa trên trạng thái cuộc gọi
+      switch (updatedCall.status) {
+        case 'missed':
+          messageContent = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} nhỡ`;
+          break;
+        case 'rejected':
+          messageContent = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} bị từ chối`;
+          break;
+        case 'ended':
+          const duration = updatedCall.duration || 0;
+          const minutes = Math.floor(duration / 60);
+          const seconds = duration % 60;
+          const durationText = minutes > 0 ? 
+            `${minutes} phút ${seconds} giây` : 
+            `${seconds} giây`;
+          messageContent = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'}`;
+          break;
+        default:
+          messageContent = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'}`;
+      }
       
-  //     // Tạo nội dung tin nhắn dựa trên trạng thái cuộc gọi
-  //     switch (updatedCall.status) {
-  //       case 'missed':
-  //         messageContent = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} nhỡ`;
-  //         break;
-  //       case 'rejected':
-  //         messageContent = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} bị từ chối`;
-  //         break;
-  //       case 'ended':
-  //         const duration = updatedCall.duration || 0;
-  //         const minutes = Math.floor(duration / 60);
-  //         const seconds = duration % 60;
-  //         const durationText = minutes > 0 ? 
-  //           `${minutes} phút ${seconds} giây` : 
-  //           `${seconds} giây`;
-  //         messageContent = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} (${durationText})`;
-  //         break;
-  //       default:
-  //         messageContent = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'}`;
-  //     }
+      // Tạo dữ liệu tin nhắn
+      const messageData = {
+        _id: new ObjectId(),
+        senderId: callerId,
+        senderUsername: callerName,
+        senderAvatarColor: callerAvatarColor,
+        senderProfilePicture: callerAvatarSrc,
+        receiverId: receiverId,
+        receiverUsername: receiverName,
+        receiverAvatarColor: receiverAvatarColor,
+        receiverProfilePicture: receiverAvatarSrc,
+        conversationId: conversationId,
+        body: messageContent,
+        gifUrl: '',
+        reaction: [],
+        isRead: false,
+        deleteForEveryone: false,
+        deleteForMe: false,
+        selectedImage: '',
+        messageType,
+        isGroupChat: false,
+        callId,
+        callType,
+        callStatus: updatedCall.status,
+        callDuration: updatedCall.duration || 0,
+        createdAt: Date.now()
+      } as unknown as IMessageData;
       
-  //     // Tạo dữ liệu tin nhắn
-  //     const messageData = {
-  //       senderId: callerId,
-  //       receiverId: receiverId,
-  //       conversationId: `${callerId}-${receiverId}`,
-  //       body: messageContent,
-  //       messageType,
-  //       callId,
-  //       callType,
-  //       callStatus: updatedCall.status,
-  //       duration: updatedCall.duration || 0,
-  //       createdAt: Date.now()
-  //     };
-      
-  //     // Lưu tin nhắn bằng MessageCache
-  //     await cache.messageCache.addMessageToChatList(messageData);
-  //   } catch (error) {
-  //     log.error(error);
-  //   }
-  // }
+      // Lưu tin nhắn vào cơ sở dữ liệu
+      socketIOChatObject.emit('chat list-notification', messageData);
+      socketIOChatObject.emit('message received', messageData);
+      socketIOChatObject.emit('chat list', messageData);
+      await messageCache.addChatMessageToCache(conversationId, messageData);
+      await chatService.addMessageToDB(messageData);
+      // Lưu tin nhắn bằng MessageCache
+    } catch (error) {
+      log.error(error);
+    }
+  }
 }

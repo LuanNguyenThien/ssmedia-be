@@ -12,7 +12,7 @@ export abstract class BaseCache {
 
   constructor(cacheName: string) {
     console.log(cacheName);
-    if(cacheName === 'callHistory' || cacheName === 'userBehaviorCache') {
+    if(cacheName === 'callHistory' || cacheName === 'userCallStatus' || cacheName === 'userBehaviorCache') {
       this.client = createClient({ url: config.REDIS_HOST });
       this.client.connect().catch((error) => {
         console.error('Failed to connect to Redis:', error);

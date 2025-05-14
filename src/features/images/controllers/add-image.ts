@@ -66,6 +66,26 @@ export class Add {
     res.status(HTTP_STATUS.OK).json({ message: 'Image added successfully' });
   }
 
+  public async groupAvatar(req: Request, res: Response): Promise<void> {
+    // Generate a unique identifier for the image
+    const uniqueId = `img_${new Date().getTime()}`;
+    
+    const result: UploadApiResponse = (await uploads(req.body.image, uniqueId, true, true)) as UploadApiResponse;
+    if (!result?.public_id) {
+      throw new BadRequestError('File upload: Error occurred. Try again.');
+    }
+    
+    const url = `https://res.cloudinary.com/di6ozapw8/image/upload/v${result.version}/${result.public_id}?t=${new Date().getTime()}`;
+    
+    // Return the URL in the response
+    res.status(HTTP_STATUS.OK).json({ 
+      message: 'Image uploaded successfully', 
+      url: url,
+      imgId: result.public_id,
+      imgVersion: result.version.toString()
+    });
+  }
+
   private async backgroundUpload(image: string): Promise<IBgUploadResponse> {
     const isDataURL = Helpers.isDataURL(image);
     let version = '';

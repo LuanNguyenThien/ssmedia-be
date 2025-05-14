@@ -21,6 +21,11 @@ const messageSchema: Schema = new Schema({
   deleteForEveryone: { type: Boolean, default: false },
   selectedImage: { type: String, default: '' },
   reaction: Array,
+  messageType: { type: String, default: '' },
+  callId: { type: String, default: '' },
+  callType: { type: String, default: '' },
+  callDuration: { type: Number, default: 0 },
+  callStatus: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 
