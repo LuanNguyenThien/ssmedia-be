@@ -30,6 +30,30 @@ export class PostCache extends BaseCache {
     }
   }
 
+  public async clearLastPersonalizedPostsCache(key: string, count: number = 50): Promise<void> {
+  try {
+    if (!this.client.isOpen) {
+      await this.client.connect();
+    }
+    const redisKey = `user:${key}:posts`;
+    
+    // Get the current length of the list
+    const listLength = await this.client.lLen(redisKey);
+    
+    if (listLength <= count) {
+      // If the list is shorter than or equal to count, clear it entirely
+      await this.client.del(redisKey);
+    } else {
+      // Keep all elements except the last 'count' elements
+      // In Redis, we can use negative indices (-1 is the last element)
+      await this.client.lTrim(redisKey, 0, -count - 1);
+    }
+  } catch (error) {
+    log.error("Lỗi khi xóa last cache", error, key);
+    throw new ServerError('Server error. Try again.');
+  }
+}
+
   public async getAllPostsforUserFromCache(key: string): Promise<IPostDocument[]> {
     try {
       if (!this.client.isOpen) {
@@ -163,7 +187,7 @@ export class PostCache extends BaseCache {
       }
       const serializedPosts = posts.map(post => JSON.stringify({ _id: post._id, score: post.score }));
       await this.client.rPush(key, serializedPosts);
-      await this.client.expire(key, 30); // Đặt TTL là 5 phút (300 giây)
+      await this.client.expire(key, 300); // Đặt TTL là 5 phút (300 giây)
     } catch (error) {
       log.error("Lỗi ở đây", error, key, posts);
       throw new ServerError('Server error. Try again.');
