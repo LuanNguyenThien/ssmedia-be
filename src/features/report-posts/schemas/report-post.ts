@@ -5,6 +5,7 @@ const ReportPostsSchema: ObjectSchema = Joi.object().keys({
     'any.required': 'postId is a required property'
   }),
   userId: Joi.string().optional().allow(null, ''),
+  details: Joi.string().allow('', null),
   content: Joi.string().required().min(10).max(500)
 });
 

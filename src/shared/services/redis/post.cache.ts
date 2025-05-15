@@ -119,6 +119,10 @@ export class PostCache extends BaseCache {
       const replies: PostCacheMultiType = (await multi.exec()) as PostCacheMultiType;
       const postReplies: IPostDocument[] = [];
       for (const post of replies as IPostDocument[]) {
+        // const isHidden = Helpers.parseJson(`${post.isHidden}`) as boolean;
+        // if (isHidden) continue;
+        if (post.isHidden === true) continue;
+        
         post.commentsCount = Helpers.parseJson(`${post.commentsCount}`) as number;
         post.reactions = Helpers.parseJson(`${post.reactions}`) as IReactions;
         post.createdAt = new Date(Helpers.parseJson(`${post.createdAt}`)) as Date;
@@ -487,7 +491,22 @@ export class PostCache extends BaseCache {
   }
 
   public async updatePostInCache(key: string, updatedPost: IPostDocument): Promise<IPostDocument> {
-    const { htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, videoId, videoVersion, profilePicture } = updatedPost;
+    const {
+      htmlPost,
+      post,
+      bgColor,
+      feelings,
+      privacy,
+      gifUrl,
+      imgVersion,
+      imgId,
+      videoId,
+      videoVersion,
+      profilePicture,
+      isHidden,
+      hiddenReason,
+      hiddenAt
+    } = updatedPost;
     const dataToSave = {
       'htmlPost': `${htmlPost}`,
       'post': `${post}`,
@@ -499,7 +518,10 @@ export class PostCache extends BaseCache {
       'videoVersion': `${videoVersion}`,
       'profilePicture': `${profilePicture}`,
       'imgVersion': `${imgVersion}`,
-      'imgId': `${imgId}`
+      'imgId': `${imgId}`,
+      'isHidden': `${isHidden}`,
+    'hiddenReason': `${hiddenReason}`,
+    'hiddenAt': hiddenAt ? new Date(hiddenAt).toISOString() : ''
     };
 
     try {
@@ -507,7 +529,9 @@ export class PostCache extends BaseCache {
         await this.client.connect();
       }
       for (const [itemKey, itemValue] of Object.entries(dataToSave)) {
-        await this.client.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);
+        console.log(itemKey, itemValue);
+        if(itemValue != 'undefined') {
+        await this.client.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);}
       }
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();
       multi.HGETALL(`posts:${key}`);

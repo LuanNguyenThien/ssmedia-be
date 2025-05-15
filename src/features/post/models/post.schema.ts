@@ -49,6 +49,13 @@ const postSchema: Schema = new Schema({
   isHidden: {
     type: Boolean,
     default: false
+  },
+  hiddenReason: {
+    type: String,
+    default: ''
+  },
+  hiddenAt: {
+    type: Date
   }
 });
 

@@ -47,6 +47,8 @@ export interface IPostDocument extends Document {
   score?: number;
   favoritedBy?: string[];
   isHidden?: Boolean;
+  hiddenReason?: string;
+  hiddenAt?: Date;
 }
 
 export interface IPostJobAnalysis {

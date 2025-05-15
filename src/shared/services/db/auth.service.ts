@@ -1,6 +1,7 @@
 import { IAuthDocument } from '@auth/interfaces/auth.interface';
 import { AuthModel } from '@auth/models/auth.schema';
 import { Helpers } from '@global/helpers/helpers';
+import { ObjectId } from 'mongodb';
 
 class AuthService {
   public async createAuthUser(data: IAuthDocument): Promise<void> {
@@ -41,6 +42,13 @@ class AuthService {
       passwordResetExpires: { $gt: Date.now() }
     }).exec()) as IAuthDocument;
     return user;
+  }
+
+  public async isUserBanned(authId: string): Promise<boolean> {
+    console.log('authId', authId);
+    const user = await AuthModel.findById(new ObjectId(authId)).select('isBanned').exec();
+    console.log(user);
+    return user?.isBanned ?? false;
   }
 }
 

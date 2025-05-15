@@ -14,6 +14,20 @@ class UserService {
     await AuthModel.updateOne({ username }, { $set: { password: hashedPassword } }).exec();
   }
 
+  public async countNewUsersToday(): Promise<number> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const count = await AuthModel.countDocuments({
+      createdAt: { $gte: startOfToday, $lte: endOfToday }
+    });
+
+    return count;
+  }
+
   public async updateUserInfo(userId: string, info: IBasicInfo): Promise<void> {
     await UserModel.updateOne(
       { _id: userId },
@@ -184,11 +198,13 @@ class UserService {
   private aggregateProject() {
     return {
       _id: 1,
+      isBanned: '$authId.isBanned',
       username: '$authId.username',
       uId: '$authId.uId',
       email: '$authId.email',
       avatarColor: '$authId.avatarColor',
       createdAt: '$authId.createdAt',
+      role: '$authId.role',
       postsCount: 1,
       work: 1,
       school: 1,

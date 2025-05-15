@@ -13,10 +13,13 @@ class UsersRoutes {
   public routes(): Router {
     this.router.get('/users/all/:page', authMiddleware.checkAuthentication, getUser.prototype.getAllUsers);
     this.router.get('/users/:userId', authMiddleware.checkAuthentication, getUser.prototype.getByUserId);
+    this.router.get('/newusertoday', authMiddleware.checkAuthentication, getUser.prototype.getNewUsersToday);
     this.router.post('/banuser/', authMiddleware.checkAuthentication, Add.prototype.banUser);
     this.router.post('/unbanuser/', authMiddleware.checkAuthentication, Add.prototype.unbanUser);
     this.router.get('/banuser/:page', authMiddleware.checkAuthentication, getUser.prototype.getBannedUsers);
+    this.router.get('/appeal/:page', authMiddleware.checkAuthentication, getUser.prototype.getUsersFromAppeals);
     this.router.put('/reportprofile/status', authMiddleware.checkAuthentication, Add.prototype.updateReportStatus);
+    this.router.put('/appeal/status', authMiddleware.checkAuthentication, Add.prototype.updateAppealStatus);
     return this.router;
   }
 }

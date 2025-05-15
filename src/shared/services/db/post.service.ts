@@ -31,6 +31,8 @@ class PostService {
       postQuery = query;
     }
 
+    postQuery.isHidden = { $ne: true };
+
     // Xử lý lọc theo ngày
     if (query.startDate || query.endDate) {
       postQuery.createdAt = {};
@@ -48,6 +50,23 @@ class PostService {
 
   public async postsCount(): Promise<number> {
     const count: number = await PostModel.find({ privacy: { $ne: 'Private' } }).countDocuments();
+    return count;
+  }
+  public async countPostsToday(): Promise<number> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const count = await PostModel.countDocuments({
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    return count;
+  }
+
+  public async postsCountAdmin(): Promise<number> {
+    const count: number = await PostModel.find().countDocuments();
     return count;
   }
 
@@ -185,8 +204,17 @@ class PostService {
     return mongoPosts;
   }
 
-  public async hidePost(postId: string): Promise<void> {
-    await PostModel.updateOne({ _id: postId }, { $set: { isHidden: true } });
+  public async hidePost(postId: string, reason: string): Promise<IPostDocument | null> {
+    const post = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        isHidden: true,
+        hiddenReason: reason,
+        hiddenAt: new Date()
+      },
+      { new: true }
+    );
+    return post;
   }
 
   public async getHiddenPosts(skip = 0, limit = 10): Promise<IPostDocument[]> {
