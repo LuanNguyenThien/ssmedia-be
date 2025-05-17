@@ -30,6 +30,30 @@ export class PostCache extends BaseCache {
     }
   }
 
+  public async clearLastPersonalizedPostsCache(key: string, count: number = 50): Promise<void> {
+  try {
+    if (!this.client.isOpen) {
+      await this.client.connect();
+    }
+    const redisKey = `user:${key}:posts`;
+    
+    // Get the current length of the list
+    const listLength = await this.client.lLen(redisKey);
+    
+    if (listLength <= count) {
+      // If the list is shorter than or equal to count, clear it entirely
+      await this.client.del(redisKey);
+    } else {
+      // Keep all elements except the last 'count' elements
+      // In Redis, we can use negative indices (-1 is the last element)
+      await this.client.lTrim(redisKey, 0, -count - 1);
+    }
+  } catch (error) {
+    log.error("Lỗi khi xóa last cache", error, key);
+    throw new ServerError('Server error. Try again.');
+  }
+}
+
   public async getAllPostsforUserFromCache(key: string): Promise<IPostDocument[]> {
     try {
       if (!this.client.isOpen) {
@@ -95,6 +119,10 @@ export class PostCache extends BaseCache {
       const replies: PostCacheMultiType = (await multi.exec()) as PostCacheMultiType;
       const postReplies: IPostDocument[] = [];
       for (const post of replies as IPostDocument[]) {
+        // const isHidden = Helpers.parseJson(`${post.isHidden}`) as boolean;
+        // if (isHidden) continue;
+        if (post.isHidden === true) continue;
+        
         post.commentsCount = Helpers.parseJson(`${post.commentsCount}`) as number;
         post.reactions = Helpers.parseJson(`${post.reactions}`) as IReactions;
         post.createdAt = new Date(Helpers.parseJson(`${post.createdAt}`)) as Date;
@@ -163,7 +191,7 @@ export class PostCache extends BaseCache {
       }
       const serializedPosts = posts.map(post => JSON.stringify({ _id: post._id, score: post.score }));
       await this.client.rPush(key, serializedPosts);
-      await this.client.expire(key, 300); // Đặt TTL là 5 phút (300 giây)
+      await this.client.expire(key, 1800); // Đặt TTL là 30 phút (1800 giây)
     } catch (error) {
       log.error("Lỗi ở đây", error, key, posts);
       throw new ServerError('Server error. Try again.');
@@ -463,7 +491,22 @@ export class PostCache extends BaseCache {
   }
 
   public async updatePostInCache(key: string, updatedPost: IPostDocument): Promise<IPostDocument> {
-    const { htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, videoId, videoVersion, profilePicture } = updatedPost;
+    const {
+      htmlPost,
+      post,
+      bgColor,
+      feelings,
+      privacy,
+      gifUrl,
+      imgVersion,
+      imgId,
+      videoId,
+      videoVersion,
+      profilePicture,
+      isHidden,
+      hiddenReason,
+      hiddenAt
+    } = updatedPost;
     const dataToSave = {
       'htmlPost': `${htmlPost}`,
       'post': `${post}`,
@@ -475,7 +518,10 @@ export class PostCache extends BaseCache {
       'videoVersion': `${videoVersion}`,
       'profilePicture': `${profilePicture}`,
       'imgVersion': `${imgVersion}`,
-      'imgId': `${imgId}`
+      'imgId': `${imgId}`,
+      'isHidden': `${isHidden}`,
+    'hiddenReason': `${hiddenReason}`,
+    'hiddenAt': hiddenAt ? new Date(hiddenAt).toISOString() : ''
     };
 
     try {
@@ -483,7 +529,9 @@ export class PostCache extends BaseCache {
         await this.client.connect();
       }
       for (const [itemKey, itemValue] of Object.entries(dataToSave)) {
-        await this.client.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);
+        console.log(itemKey, itemValue);
+        if(itemValue != 'undefined') {
+        await this.client.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);}
       }
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();
       multi.HGETALL(`posts:${key}`);
@@ -586,6 +634,19 @@ export class PostCache extends BaseCache {
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async updatePostPropertyInCache(key: string, property: string, value: any): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      
+      await this.client.HSET(`posts:${key}`, property, value);
+    } catch (error) {
+      console.error(error);
+      throw new ServerError('Error updating post property in cache');
     }
   }
 }

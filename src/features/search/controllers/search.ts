@@ -8,12 +8,24 @@ import { ISearchResult } from '../interfaces/search.interface';
 
 export class Search {
   public async combinedSearch(req: Request, res: Response): Promise<void> {
-    const query = req.params.query;
-    console.log('Query:', query);
+    // const query = req.params.query;
+    // console.log('Query:', query);
+
+    // try {
+    //   const userRegex = new RegExp(Helpers.escapeRegex(query), 'i');
+    //   const vectorizedText = await textServiceAI.vectorizeText(query);
+    //   const [users, posts] = await Promise.all([userService.searchUsers(userRegex), postService.searchPostsByVector(vectorizedText.vector)]);
+
+    //   const result: ISearchResult = { users, posts };
+    //   res.status(HTTP_STATUS.OK).json({ message: 'Search results', result });
+    // } catch (error) {
+    //   res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Error performing search', error });
+    // }
+    const { query, image } = req.body;
 
     try {
       const userRegex = new RegExp(Helpers.escapeRegex(query), 'i');
-      const vectorizedText = await textServiceAI.vectorizeText(query);
+      const vectorizedText = await textServiceAI.vectorizeText({ query, image });
       const [users, posts] = await Promise.all([userService.searchUsers(userRegex), postService.searchPostsByVector(vectorizedText.vector)]);
 
       const result: ISearchResult = { users, posts };

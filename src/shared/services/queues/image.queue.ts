@@ -10,6 +10,7 @@ class ImageQueue extends BaseQueue {
     this.processJob('updateBGImageInDB', 5, imageWorker.updateBGImageInDB);
     this.processJob('addImageToDB', 5, imageWorker.addImageToDB);
     this.processJob('removeImageFromDB', 5, imageWorker.removeImageFromDB);
+    this.processJob('addGroupAvatarImageToDB', 5, imageWorker.addGroupAvatarImageToDB);
   }
 
   public static getInstance(): ImageQueue {

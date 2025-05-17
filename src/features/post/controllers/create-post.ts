@@ -3,7 +3,7 @@ import { postSchema, postWithImageSchema, postWithVideoSchema } from '@post/sche
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 import HTTP_STATUS from 'http-status-codes';
-import { IPostDocument } from '@post/interfaces/post.interface';
+import { IPostDocument, IPostJobAnalysis } from '@post/interfaces/post.interface';
 // import { PostCache } from '@service/redis/post.cache';
 import { socketIOPostObject } from '@socket/post';
 import { postQueue } from '@service/queues/post.queue';
@@ -49,6 +49,23 @@ export class Create {
       reactions: { upvote: 0, downvote: 0 }
     } as IPostDocument;
 
+    const analyzePost = {
+      _id: postObjectId,
+      post,
+      htmlPost,
+      privacy,
+      bgColor,
+      feelings,
+      gifUrl,
+      profilePicture,
+      imgId: '',
+      imgVersion: '',
+      videoId: '',
+      videoVersion: '',
+      userId: req.currentUser!.userId,
+      createdAt: new Date()  
+    } as IPostJobAnalysis;
+
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({
       key: postObjectId,
@@ -57,7 +74,7 @@ export class Create {
       createdPost
     });
     postQueue.addPostJob('addPostToDB', { key: req.currentUser!.userId, value: createdPost });
-    postQueue.addPostJob('analyzePostContent', { value: createdPost });
+    postQueue.addPostJob('analyzePostContent', { value: analyzePost });
     res.status(HTTP_STATUS.CREATED).json({ message: 'Post created successfully' });
   }
 
@@ -92,6 +109,23 @@ export class Create {
       createdAt: new Date(),
       reactions: { upvote: 0, downvote: 0 }
     } as IPostDocument;
+    
+    const analyzePost = {
+      _id: postObjectId,
+      post,
+      htmlPost,
+      privacy,
+      bgColor,
+      feelings,
+      gifUrl,
+      profilePicture,
+      imgId: result.public_id,
+      imgVersion: result.version.toString(),
+      videoId: '',
+      videoVersion: '',
+      userId: req.currentUser!.userId,
+    } as IPostJobAnalysis;
+
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({
       key: postObjectId,
@@ -100,6 +134,7 @@ export class Create {
       createdPost
     });
     postQueue.addPostJob('addPostToDB', { key: req.currentUser!.userId, value: createdPost });
+    postQueue.addPostJob('analyzePostContent', { value: analyzePost });
     imageQueue.addImageJob('addImageToDB', {
       key: `${req.currentUser!.userId}`,
       imgId: result.public_id,
@@ -111,7 +146,7 @@ export class Create {
   @joiValidation(postWithVideoSchema)
   public async postWithVideo(req: Request, res: Response): Promise<void> {
     const { post, bgColor, privacy, gifUrl, profilePicture, feelings, video } = req.body;
-
+    const htmlPost = "";
     const result: UploadApiResponse = (await videoUpload(video)) as UploadApiResponse;
     if (!result?.public_id) {
       throw new BadRequestError(result.message);
@@ -138,6 +173,21 @@ export class Create {
       createdAt: new Date(),
       reactions: { upvote: 0, downvote: 0 }
     } as IPostDocument;
+    const analyzePost = {
+      _id: postObjectId,
+      post,
+      htmlPost,
+      privacy,
+      bgColor,
+      feelings,
+      gifUrl,
+      profilePicture,
+      imgId: '',
+      imgVersion: '',
+      videoId: result.public_id,
+      videoVersion: result.version.toString(),
+      userId: req.currentUser!.userId,
+    } as IPostJobAnalysis;
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({
       key: postObjectId,
@@ -146,6 +196,7 @@ export class Create {
       createdPost
     });
     postQueue.addPostJob('addPostToDB', { key: req.currentUser!.userId, value: createdPost });
+    postQueue.addPostJob('analyzePostContent', { value: analyzePost });
     res.status(HTTP_STATUS.CREATED).json({ message: 'Post created with video successfully' });
   }
 }

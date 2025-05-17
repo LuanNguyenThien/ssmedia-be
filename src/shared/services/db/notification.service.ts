@@ -23,7 +23,9 @@ class NotificationService {
           imgId: 1,
           imgVersion: 1,
           post: 1,
+          htmlPost: 1,
           reaction: 1,
+          post_analysis: 1,
           read: 1,
           userTo: 1,
           userFrom: {

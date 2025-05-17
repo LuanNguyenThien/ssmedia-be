@@ -12,7 +12,8 @@ import { Helpers } from '@global/helpers/helpers';
 import { IPostDocument } from '@post/interfaces/post.interface';
 import { postService } from '@service/db/post.service';
 import { cache } from '@service/redis/cache';
-
+import { userBanService } from '@service/db/ban-user.service';
+import { BadRequestError } from '@global/helpers/error-handler'; 
 const PAGE_SIZE = 12;
 
 interface IUserAll {
@@ -46,29 +47,35 @@ export class Get {
   }
 
   public async profile(req: Request, res: Response): Promise<void> {
-    const cachedUser: IUserDocument = (await userCache.getUserFromCache(`${req.currentUser!.userId}`)) as IUserDocument;
-    const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(`${req.currentUser!.userId}`);
+    // const cachedUser: IUserDocument = (await userCache.getUserFromCache(`${req.currentUser!.userId}`)) as IUserDocument;
+    // const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(`${req.currentUser!.userId}`);
+    const existingUser: IUserDocument = await userService.getUserById(`${req.currentUser!.userId}`);
+
     res.status(HTTP_STATUS.OK).json({ message: 'Get user profile', user: existingUser });
   }
 
   public async profileByUserId(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
-    const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
-    const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(userId);
+    // const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
+    // const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(userId);
+    const existingUser: IUserDocument = await userService.getUserById(userId);
     res.status(HTTP_STATUS.OK).json({ message: 'Get user profile by id', user: existingUser });
   }
 
   public async profileAndPosts(req: Request, res: Response): Promise<void> {
     const { userId, username, uId } = req.params;
     const userName: string = Helpers.firstLetterUppercase(username);
-    const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
-    const cachedUserPosts: IPostDocument[] = await postCache.getUserPostsFromCache('post', parseInt(uId, 10));
 
-    const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(userId);
-    const userPosts: IPostDocument[] = cachedUserPosts.length
-      ? cachedUserPosts
-      : await postService.getPosts({ username: userName }, 0, 100, { createdAt: -1 });
+    // const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
+    // const cachedUserPosts: IPostDocument[] = await postCache.getUserPostsFromCache('post', parseInt(uId, 10));
 
+    // const existingUser: IUserDocument = cachedUser ? cachedUser : await userService.getUserById(userId);
+    // const userPosts: IPostDocument[] = cachedUserPosts.length
+    //   ? cachedUserPosts
+    //   : await postService.getPosts({ username: userName }, 0, 100, { createdAt: -1 });
+
+    const existingUser: IUserDocument = await userService.getUserById(userId);
+    const userPosts: IPostDocument[] = await postService.getPosts({ username: userName }, 0, 100, { createdAt: -1 });
     res.status(HTTP_STATUS.OK).json({ message: 'Get user profile and posts', user: existingUser, posts: userPosts });
   }
 
@@ -108,5 +115,27 @@ export class Get {
     const cachedFollowers: IFollowerData[] = await followerCache.getFollowersFromCache(`followers:${userId}`);
     const result = cachedFollowers.length ? cachedFollowers : await followerService.getFollowerData(new mongoose.Types.ObjectId(userId));
     return result;
+  }
+
+  public async getBanInfo(req: Request, res: Response): Promise<void> {
+    try {
+      const { authId } = req.params;
+
+      if (!authId) {
+        throw new BadRequestError('Auth ID is required');
+      }
+
+      const banInfo = await userBanService.getBanInfoByAuthId(authId);
+
+      if (!banInfo) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'User is not banned or does not exist' });
+        return;
+      }
+
+      res.status(HTTP_STATUS.OK).json({ message: 'Ban info retrieved successfully', data: banInfo });
+    } catch (error) {
+      console.error('Error fetching ban info:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch ban info' });
+    }
   }
 }

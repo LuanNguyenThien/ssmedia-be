@@ -4,8 +4,10 @@ import { IUserDocument } from '@user/interfaces/user.interface';
 import { UserModel } from '@user/models/user.schema';
 import { Query, UpdateQuery } from 'mongoose';
 import { cache } from '@service/redis/cache';
+import { textServiceAI } from '@api-serverAI/text/text.AIservice';
 
 const postCache = cache.postCache;
+const userbehaviorCache = cache.userBehaviorCache;
 
 class PostService {
   public async addPostToDB(userId: string, createdPost: IPostDocument): Promise<void> {
@@ -29,6 +31,8 @@ class PostService {
       postQuery = query;
     }
 
+    postQuery.isHidden = { $ne: true };
+
     // Xử lý lọc theo ngày
     if (query.startDate || query.endDate) {
       postQuery.createdAt = {};
@@ -48,6 +52,23 @@ class PostService {
     const count: number = await PostModel.find({ privacy: { $ne: 'Private' } }).countDocuments();
     return count;
   }
+  public async countPostsToday(): Promise<number> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const count = await PostModel.countDocuments({
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    return count;
+  }
+
+  public async postsCountAdmin(): Promise<number> {
+    const count: number = await PostModel.find().countDocuments();
+    return count;
+  }
 
   public async deletePost(postId: string, userId: string): Promise<void> {
     const deletePost: Query<IQueryComplete & IQueryDeleted, IPostDocument> = PostModel.deleteOne({ _id: postId });
@@ -56,24 +77,43 @@ class PostService {
     await Promise.all([deletePost, decrementPostCount]);
   }
 
-  public async editPost(postId: string, updatedPost: IPostDocument): Promise<void> {
+  public async editPost(postId: string, updatedPost: Partial<IPostDocument>): Promise<void> {
     const updatePost: UpdateQuery<IPostDocument> = PostModel.updateOne({ _id: postId }, { $set: updatedPost });
     await Promise.all([updatePost]);
   }
 
-  public async getPostsforUserByVector(userId: string, mongoSkip: number, mongoLimit: number): Promise<IPostDocument[]> {
+   public async getPostsforUserByVector(userId: string, mongoSkip: number, mongoLimit: number): Promise<IPostDocument[]> {
     const user: IUserDocument | null = await UserModel.findById(userId);
     if (!user) {
       return [];
     } else {
-      const userVector: number[] = user.user_vector as number[];
+      let userVector: number[] = user.user_vector as number[];
       console.log(userVector);
-      if (userVector !== undefined && userVector.length === 0) {
+      const userInterest: string[] = await userbehaviorCache.getUserInterests(userId);
+      console.log('User interests:', userInterest);
+      if (userInterest.length > 0) {
+        let combinedText = '';
+        if(user.quote || user.school || user.work || user.location) {
+          combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
+        }
+        const response = await textServiceAI.vectorizeText({ query: combinedText, userInterest });
+        const updatedUserVector: number[] = response.vector;
+        console.log('Updated user vector:', updatedUserVector);
+        await UserModel.updateOne({ _id: userId }, { $set: { user_vector: updatedUserVector } });
+        userVector = updatedUserVector;
+      }
+      if (!userVector || userVector.length === 0) {
         const posts = await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
         return posts;
+
       }
       const posts = await this.searchPostsByVector(userVector, mongoSkip, mongoLimit, userId);
       return posts;
+
+
+
+
+
     }
   }
 
@@ -119,15 +159,13 @@ class PostService {
           index: 'vectorPost_index',
           path: 'post_embedding',
           queryVector: queryVector,
-          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit + 50 : 100,
-          limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit : 10
+          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit*5 : 200,
+          limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit*1.5 : 10,
+          filter: {
+            privacy: { $ne: 'Private' }
+          }
         }
       } as any,
-      {
-        $match: {
-          privacy: { $ne: 'Private' } // Lọc các bài post có privacy khác 'Private'
-        }
-      },
       {
         $project: {
           analysis: 0,
@@ -139,10 +177,11 @@ class PostService {
       },
       {
         $sort: {
-          score: -1 // Sắp xếp theo điểm liên quan
+          score: -1 // Sort by relevance score
         }
       }
     ];
+    console.log('Pipeline:', JSON.stringify(pipeline, null, 2));
 
     const mongoPosts = await PostModel.aggregate(pipeline).exec();
     if (mongoSkip !== undefined && mongoLimit !== undefined) {
@@ -154,6 +193,7 @@ class PostService {
       //     $limit: mongoLimit  // Giới hạn số lượng kết quả trả về
       //   }
       // );
+      console.log('Mongo posts:', mongoPosts.length);
       const combinedPosts = [...allCachedPosts, ...mongoPosts];
       const uniquePosts = Array.from(new Set(combinedPosts.map((post) => post._id.toString()))).map((id) =>
         combinedPosts.find((post) => post._id.toString() === id)
@@ -164,8 +204,17 @@ class PostService {
     return mongoPosts;
   }
 
-  public async hidePost(postId: string): Promise<void> {
-    await PostModel.updateOne({ _id: postId }, { $set: { isHidden: true } });
+  public async hidePost(postId: string, reason: string): Promise<IPostDocument | null> {
+    const post = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        isHidden: true,
+        hiddenReason: reason,
+        hiddenAt: new Date()
+      },
+      { new: true }
+    );
+    return post;
   }
 
   public async getHiddenPosts(skip = 0, limit = 10): Promise<IPostDocument[]> {

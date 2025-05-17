@@ -2,7 +2,7 @@ import { IUserDocument } from '@user/interfaces/user.interface';
 import mongoose, { model, Model, Schema } from 'mongoose';
 
 const userSchema: Schema = new Schema({
-  authId: { type: mongoose.Schema.Types.ObjectId, ref: 'Auth', index: true },
+  authId: { type: mongoose.Schema.Types.ObjectId, ref: 'Auth', index: true }, 
   profilePicture: { type: String, default: '' },
   postsCount: { type: Number, default: 0 },
   followersCount: { type: Number, default: 0 },
@@ -28,7 +28,7 @@ const userSchema: Schema = new Schema({
   location: { type: String, default: '' },
   quote: { type: String, default: '' },
   bgImageVersion: { type: String, default: '' },
-  bgImageId: { type: String, default: ''},
+  bgImageId: { type: String, default: '' },
   user_vector: { type: [Number] }
 });
 

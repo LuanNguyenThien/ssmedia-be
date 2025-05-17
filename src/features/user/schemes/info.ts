@@ -15,16 +15,14 @@ const socialLinksSchema: ObjectSchema = Joi.object().keys({
 });
 
 const changePasswordSchema: ObjectSchema = Joi.object().keys({
-  currentPassword: Joi.string().required().min(4).max(8).messages({
+  currentPassword: Joi.string().required().min(8).messages({
     'string.base': 'Password should be a type of string',
     'string.min': 'Password must have a minimum length of {#limit}',
-    'string.max': 'Password should have a maximum length of {#limit}',
     'string.empty': 'Password is a required field'
   }),
-  newPassword: Joi.string().required().min(4).max(8).messages({
+  newPassword: Joi.string().required().min(8).messages({
     'string.base': 'Password should be a type of string',
     'string.min': 'Password must have a minimum length of {#limit}',
-    'string.max': 'Password should have a maximum length of {#limit}',
     'string.empty': 'Password is a required field'
   }),
   confirmPassword: Joi.any().equal(Joi.ref('newPassword')).required().messages({

@@ -4,6 +4,7 @@ import { serverAdapter } from '@service/queues/base.queue';
 import { currentUserRoutes } from '@auth/routes/currentRoutes';
 import { authMiddleware } from '@global/helpers/auth-middleware';
 import { postRoutes } from '@post/routes/postRoutes';
+import { appealRoutes } from '@appeal/routes/appealRoutes';
 import { favpostRoutes } from '@favorite-posts/routes/fav-postRoutes';
 import { reactionRoutes } from '@reaction/routes/reactionRoutes';
 import { commentRoutes } from '@comment/routes/commentRoutes';
@@ -11,7 +12,7 @@ import { followerRoutes } from '@follower/routes/followerRoutes';
 import { notificationRoutes } from '@notification/routes/notificationRoutes';
 import { imageRoutes } from '@image/routes/imageRoutes';
 import { chatRoutes } from '@chat/routes/chatRoutes';
-import { groupChatRoutes } from '@chat/routes/groupchatRoutes';
+import { groupChatRoutes } from '@root/features/group-chat/routes/groupchatRoutes';
 import { userRoutes } from '@user/routes/userRoutes';
 import { usersRoutes } from '@users/routes/usersRoutes';
 import { postsRoutes } from '@posts/routes/postsRoutes';
@@ -39,6 +40,7 @@ export default (app: Application) => {
     app.use(BASE_PATH_ADMIN, authMiddleware.verifyAdmin, statisticRoutes.routes());
 
     app.use(BASE_PATH, authMiddleware.verifyUser, currentUserRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, appealRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, postRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, favpostRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, reportpostRoutes.routes());

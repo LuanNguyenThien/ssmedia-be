@@ -18,40 +18,54 @@ const userCache = cache.userCache;
 class CommentService {
   public async addCommentToDB(commentData: ICommentJob): Promise<void> {
     const { postId, userTo, userFrom, comment, username } = commentData;
-    const comments: Promise<ICommentDocument> = CommentsModel.create(comment);
-    const post: Query<IPostDocument, IPostDocument> = PostModel.findOneAndUpdate(
-      { _id: postId },
-      { $inc: { commentsCount: 1 } },
-      { new: true }
-    ) as Query<IPostDocument, IPostDocument>;
-    const user: Promise<IUserDocument> = userCache.getUserFromCache(userTo) as Promise<IUserDocument>;
-    const response: [ICommentDocument, IPostDocument, IUserDocument] = await Promise.all([comments, post, user]);
 
-    if (response[2].notifications.comments && userFrom !== userTo) {
-      const notificationModel: INotificationDocument = new NotificationModel();
-      const notifications = await notificationModel.insertNotification({
-        userFrom,
-        userTo,
-        message: `${username} commented on your post.`,
-        notificationType: 'comment',
-        entityId: new mongoose.Types.ObjectId(postId),
-        createdItemId: new mongoose.Types.ObjectId(response[0]._id!),
-        createdAt: new Date(),
-        comment: comment.comment,
-        post: response[1].post,
-        imgId: response[1].imgId!,
-        imgVersion: response[1].imgVersion!,
-        gifUrl: response[1].gifUrl!,
-        reaction: ''
-      });
-      socketIONotificationObject.emit('insert notification', notifications, { userTo });
-      const templateParams: INotificationTemplate = {
-        username: response[2].username!,
-        message: `${username} commented on your post.`,
-        header: 'Comment Notification'
-      };
-      const template: string = notificationTemplate.notificationMessageTemplate(templateParams);
-      emailQueue.addEmailJob('commentsEmail', { receiverEmail: response[2].email!, template, subject: 'Post notification' });
+    try {
+      // Create the comment first
+      const commentCreated: ICommentDocument = await CommentsModel.create(comment);
+
+      // Update post with explicit findByIdAndUpdate instead of using a Query object
+      const postUpdated: IPostDocument | null = await PostModel.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } }, { new: true });
+
+      console.log(
+        'Post update result:',
+        postUpdated ? `Updated post ${postId}, new commentsCount: ${postUpdated.commentsCount}` : `Post ${postId} not found`
+      );
+
+      // Get user information
+      const user: IUserDocument = (await userCache.getUserFromCache(userTo)) as IUserDocument;
+
+      // Send notification if needed
+      if (user && user.notifications && user.notifications.comments && userFrom !== userTo) {
+        const notificationModel: INotificationDocument = new NotificationModel();
+        const notifications = await notificationModel.insertNotification({
+          userFrom,
+          userTo,
+          message: `${username} commented on your post.`,
+          notificationType: 'comment',
+          entityId: new mongoose.Types.ObjectId(postId),
+          createdItemId: new mongoose.Types.ObjectId(commentCreated._id!),
+          createdAt: new Date(),
+          comment: comment.comment,
+          post: postUpdated ? postUpdated.post : '',
+          htmlPost: postUpdated ? postUpdated.htmlPost! : '',
+          imgId: postUpdated ? postUpdated.imgId! : '',
+          imgVersion: postUpdated ? postUpdated.imgVersion! : '',
+          gifUrl: postUpdated ? postUpdated.gifUrl! : '',
+          reaction: '',
+          post_analysis: ''
+        });
+        socketIONotificationObject.emit('insert notification', notifications, { userTo });
+        const templateParams: INotificationTemplate = {
+          username: user.username!,
+          message: `${username} commented on your post.`,
+          header: 'Comment Notification'
+        };
+        const template: string = notificationTemplate.notificationMessageTemplate(templateParams);
+        emailQueue.addEmailJob('commentsEmail', { receiverEmail: user.email!, template, subject: 'Post notification' });
+      }
+    } catch (error) {
+      console.error('Error in addCommentToDB:', error);
+      throw error;
     }
   }
 

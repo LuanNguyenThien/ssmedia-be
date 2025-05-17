@@ -15,6 +15,7 @@ export class CommentCache extends BaseCache {
 
   public async savePostCommentToCache(postId: string, value: string): Promise<void> {
     try {
+      console.log('savePostCommentToCache', postId, value);
       if (!this.client.isOpen) {
         await this.client.connect();
       }
@@ -23,6 +24,23 @@ export class CommentCache extends BaseCache {
       let count: number = Helpers.parseJson(commentsCount[0]) as number;
       count += 1;
       await this.client.HSET(`posts:${postId}`, 'commentsCount', `${count}`);
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
+  public async deletePostCommentFromCache(postId: string, commentId: string): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      await this.client.LREM(`comments:${postId}`, 0, commentId);
+      const commentsCount: string[] = await this.client.HMGET(`posts:${postId}`, 'commentsCount');
+      let count: number = Helpers.parseJson(commentsCount[0]) as number;
+      count -= 1;
+      await this.client.HSET(`posts:${postId}`, 'commentsCount', `${count}`);
+      console.log('deletePostCommentFromCache', postId, commentId);
     } catch (error) {
       log.error(error);
       throw new ServerError('Server error. Try again.');
