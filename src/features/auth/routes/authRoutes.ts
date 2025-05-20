@@ -6,24 +6,30 @@ import express, { Router } from 'express';
 
 class AuthRoutes {
   private router: Router;
+  private signInController: SignIn;
+  private signUpController: SignUp;
+  private passwordController: Password;
+  private signOutController: SignOut;
 
   constructor() {
     this.router = express.Router();
+    this.signInController = new SignIn();
+    this.signUpController = new SignUp();
+    this.passwordController = new Password();
+    this.signOutController = new SignOut();
   }
 
   public routes(): Router {
-    this.router.post('/signup', SignUp.prototype.create);
-    this.router.post('/signin', SignIn.prototype.read);
-    this.router.post('/forgot-password', Password.prototype.create);
-    this.router.post('/checkUser/:authId', SignIn.prototype.checkBanStatus);
-    this.router.post('/reset-password/:token', Password.prototype.update);
-
+    this.router.post('/signup', this.signUpController.create.bind(this.signUpController));
+    this.router.post('/signin', this.signInController.read.bind(this.signInController));
+    this.router.post('/forgot-password', this.passwordController.create.bind(this.passwordController));
+    this.router.post('/checkUser/:authId', this.signInController.checkBanStatus.bind(this.signInController));
+    this.router.post('/reset-password/:token', this.passwordController.update.bind(this.passwordController));
     return this.router;
   }
 
   public signoutRoute(): Router {
-    this.router.get('/signout', SignOut.prototype.update);
-
+    this.router.get('/signout', this.signOutController.update.bind(this.signOutController));
     return this.router;
   }
 }

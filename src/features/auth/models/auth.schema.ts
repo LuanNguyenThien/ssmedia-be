@@ -21,7 +21,9 @@ const authSchema: Schema = new Schema(
     passwordResetExpires: { type: Number },
     isBanned: { type: Boolean, default: false },
     banReason: { type: String, default: null },
-    bannedAt: { type: Date, default: null }
+    bannedAt: { type: Date, default: null },
+    provider: { type: String, default: 'local', enum: ['local', 'google'] },
+    providerId: { type: String, default: null }
   },
   {
     toJSON: {
@@ -34,8 +36,10 @@ const authSchema: Schema = new Schema(
 );
 
 authSchema.pre('save', async function (this: IAuthDocument, next: () => void) {
-  const hashedPassword: string = await hash(this.password as string, SALT_ROUND);
-  this.password = hashedPassword;
+  if (this.password) {
+    const hashedPassword: string = await hash(this.password as string, SALT_ROUND);
+    this.password = hashedPassword;
+  }
   next();
 });
 

@@ -12,13 +12,21 @@ export abstract class BaseCache {
 
   constructor(cacheName: string) {
     console.log(cacheName);
-    if(cacheName === 'callHistory' || cacheName === 'userCallStatus' || cacheName === 'userBehaviorCache') {
-      this.client = createClient({ url: config.REDIS_HOST });
+    if (cacheName === 'callHistory' || cacheName === 'userCallStatus' || cacheName === 'userBehaviorCache') {
+      this.client = createClient({
+        url: config.REDIS_HOST,
+
+        socket: {
+          connectTimeout: 60000, // 60 seconds
+          keepAlive: 5000, // Keep alive every 5 seconds
+          reconnectStrategy: (retries) => Math.min(retries * 100, 5000) // Exponential backoff with max 5s
+        }
+      });
       this.client.connect().catch((error) => {
         console.error('Failed to connect to Redis:', error);
       });
-    }else {
-    // this.client = createClient({ url: config.REDIS_HOST });
+    } else {
+      // this.client = createClient({ url: config.REDIS_HOST });
       this.client = BaseCache.getClient();
     }
     // redisService.connect();
@@ -30,7 +38,14 @@ export abstract class BaseCache {
   private static getClient(): RedisClient {
     if (!BaseCache.clientInstance) {
       console.log('Creating new Redis client');
-      BaseCache.clientInstance = createClient({ url: config.REDIS_HOST });
+      BaseCache.clientInstance = createClient({
+        url: config.REDIS_HOST,
+        socket: {
+          connectTimeout: 60000, // 60 seconds
+          keepAlive: 5000, // Keep alive every 5 seconds
+          reconnectStrategy: (retries) => Math.min(retries * 100, 5000) // Exponential backoff with max 5s
+        }
+      });
 
       // Kết nối Redis ngay khi khởi tạo
       BaseCache.clientInstance.connect().catch((error) => {

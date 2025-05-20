@@ -20,6 +20,36 @@ export interface AuthPayload {
   iat?: number;
 }
 
+export interface GooglePayload {
+  email: string;
+  password: string;
+  username: string;
+  avatarColor: string;
+}
+
+// Firebase Auth Payload Interface
+export interface FirebaseAuthPayload {
+  localId: string;
+  email: string;
+  displayName: string;
+  photoUrl: string;
+  emailVerified: boolean;
+  providerUserInfo: ProviderUserInfo[];
+  validSince?: string;
+  lastLoginAt?: string;
+  createdAt?: string;
+  lastRefreshAt?: string;
+}
+
+export interface ProviderUserInfo {
+  providerId: string;
+  displayName: string;
+  photoUrl: string;
+  federatedId: string;
+  email: string;
+  rawId: string;
+}
+
 export interface IAuthDocument extends Document {
   _id: string | ObjectId;
   uId: string;
@@ -34,6 +64,8 @@ export interface IAuthDocument extends Document {
   banReason: string | null;
   passwordResetToken?: string;
   passwordResetExpires?: number | string;
+  provider?: string;
+  providerId?: string;
   comparePassword(password: string): Promise<boolean>;
   hashPassword(password: string): Promise<string>;
 }

@@ -1,18 +1,21 @@
 import Joi, { ObjectSchema } from 'joi';
 
 const loginSchema: ObjectSchema = Joi.object().keys({
-  username: Joi.string().required().min(4).max(20).messages({
-    'string.base': 'Username must be of type string',
-    'string.min': 'Invalid username',
-    'string.max': 'Invalid username',
-    'string.empty': 'Username is a required field'
+  username: Joi.string().allow('').optional(),
+  password: Joi.string().allow('').optional(),
+  provider: Joi.string().valid('local', 'google').required().messages({
+    'any.required': 'Provider is required',
+    'string.empty': 'Provider is required'
   }),
-  password: Joi.string().required().min(4).max(20).messages({
-    'string.base': 'Password must be of type string',
-    'string.min': 'Invalid password',
-    'string.max': 'Invalid password',
-    'string.empty': 'Password is a required field'
+  payload: Joi.when('provider', {
+    is: 'google',
+    then: Joi.object().required().messages({
+      'any.required': 'Google payload is required for Google authentication'
+    }),
+    otherwise: Joi.optional()
   })
+}).or('username', 'payload').messages({
+  'object.missing': 'Either username or Google payload is required'
 });
 
 export { loginSchema };
