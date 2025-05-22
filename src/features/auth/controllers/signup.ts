@@ -117,6 +117,20 @@ export class SignUp {
       banReason: null
     } as unknown as IAuthDocument;
 
+    // Upload profile picture to Cloudinary if available
+    let profilePictureUrl = '';
+    if (payload.photoUrl) {
+      try {
+        const result: UploadApiResponse = await uploads(payload.photoUrl, `${userObjectId}`, true, true) as UploadApiResponse;
+        if (result?.public_id) {
+          profilePictureUrl = `https://res.cloudinary.com/di6ozapw8/image/upload/v${result.version}/${userObjectId}`;
+        }
+      } catch (error) {
+        console.log('Error uploading Google profile picture to Cloudinary:', error);
+        // Continue with empty profile picture if upload fails
+      }
+    }
+    
     // Create user data
     const userDataForCache = {
       _id: userObjectId,
@@ -125,7 +139,7 @@ export class SignUp {
       username: finalUsername,
       email: payload.email,
       avatarColor,
-      profilePicture: payload.photoUrl || '',
+      profilePicture: profilePictureUrl || '',
       blocked: [],
       blockedBy: [],
       work: '',
