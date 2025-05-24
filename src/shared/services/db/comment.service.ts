@@ -14,6 +14,8 @@ import { cache } from '@service/redis/cache';
 
 // const userCache: UserCache = new UserCache();
 const userCache = cache.userCache;
+const userBehaviorCache = cache.userBehaviorCache;
+const postCache = cache.postCache;
 
 class CommentService {
   public async addCommentToDB(commentData: ICommentJob): Promise<void> {
@@ -33,6 +35,15 @@ class CommentService {
 
       // Get user information
       const user: IUserDocument = (await userCache.getUserFromCache(userTo)) as IUserDocument;
+
+      const currentUser = await userCache.getUserFromCache(`${userFrom}`);
+      if(currentUser?.personalizeSettings?.allowPersonalize !== false) {
+        if(postUpdated) {
+          await postCache.clearPersonalizedPostsCache(userFrom as string);
+          // Save user interests from the post analysis
+          await userBehaviorCache.saveUserInterests(userFrom as string, postId, postUpdated);
+        }
+      }
 
       // Send notification if needed
       if (user && user.notifications && user.notifications.comments && userFrom !== userTo) {

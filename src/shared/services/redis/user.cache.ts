@@ -98,6 +98,7 @@ export class UserCache extends BaseCache {
       response.school = Helpers.parseJson(`${response.school}`);
       response.location = Helpers.parseJson(`${response.location}`);
       response.quote = Helpers.parseJson(`${response.quote}`);
+      response.personalizeSettings = Helpers.parseJson(`${response.personalizeSettings}`);
 
       return response;
     } catch (error) {

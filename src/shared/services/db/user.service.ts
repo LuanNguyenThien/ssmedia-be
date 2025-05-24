@@ -1,4 +1,4 @@
-import { IBasicInfo, ISearchUser, IUserDocument, ISocialLinks, INotificationSettings } from '@user/interfaces/user.interface';
+import { IBasicInfo, ISearchUser, IUserDocument, ISocialLinks, INotificationSettings, IPersonalizeSettings } from '@user/interfaces/user.interface';
 import { UserModel } from '@user/models/user.schema';
 import mongoose from 'mongoose';
 import { indexOf } from 'lodash';
@@ -58,6 +58,49 @@ class UserService {
 
   public async updateNotificationSettings(userId: string, settings: INotificationSettings): Promise<void> {
     await UserModel.updateOne({ _id: userId }, { $set: { notifications: settings } }).exec();
+  }
+
+  public async updatePersonalizeSettings(userId: string, settings: IPersonalizeSettings): Promise<void> {
+    await UserModel.updateOne({ _id: userId }, { $set: { personalizeSettings: settings } }).exec();
+  }
+
+  public async updateUserHobbies(userId: string, subject?: string): Promise<void> {
+    await UserModel.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          user_hobbies: {
+            subject: subject
+          }
+        }
+      }
+    ).exec();
+  }
+
+  public async clearAllPersonalized(userId: string): Promise<void> {
+    await UserModel.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          user_vector: [],
+          user_hobbies: {
+            personal: '',
+            subject: ''
+          }
+        }
+      }
+    ).exec();
+  }
+
+  public async clearUserVector(userId: string): Promise<void> {
+    await UserModel.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          user_vector: []
+        }
+      }
+    ).exec();
   }
 
   public async getUserById(userId: string): Promise<IUserDocument> {

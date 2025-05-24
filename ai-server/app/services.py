@@ -1,7 +1,7 @@
 import re, json, traceback
 from app.config import Config
 import google.generativeai as genai
-from .utils import blacklist_categories, is_meaningful_text, preprocess_text, combine_text, get_albert_embedding, store_vector_in_mongodb, collection
+from .utils import blacklist_categories, is_meaningful_text, preprocess_text, combine_text, get_albert_embedding, get_improved_embedding, get_attention_weighted_embedding, store_vector_in_mongodb, collection, extract_related_topics_for_embedding
 import base64
 import requests
 
@@ -36,10 +36,10 @@ async def clarify_text_for_vectorization(text, image=None):
 
         Avoid including unrelated terms or overly broad explanations. Use the following example as a reference format:
         Example Input and Output:
+        Example Input: "Ôn thi học sinh giỏi sử"
+        Example Output:
         ---
 
-        **Example Input**: "Ôn thi học sinh giỏi sử"
-        **Output**:
         - **Main Idea**: Preparation for advanced history exams.
         - **Related Topics**:
         - History (general)
@@ -388,7 +388,7 @@ async def analyze_content(content, id, image_urls=None, video_urls=None, audio_u
         traceback.print_exc()
         return {"error": str(e)}
     
-async def vectorize_query(query, image=None, userInterest=None):
+async def vectorize_query(query, image=None, userInterest=None, userHobbies=None):
     try:
         if image is not None:
             # Giải mã base64 nếu cần
@@ -408,14 +408,22 @@ async def vectorize_query(query, image=None, userInterest=None):
                     except Exception as e:
                         print(f"Error fetching image from URL: {str(e)}")
                         image = None
-        if (query is not None and query != '') or (image is not None):
+        if (query is not None and query != '' and userHobbies is None) or (image is not None):
             query = await clarify_text_for_vectorization(query, image)
-        if userInterest is not None:
-            query = f"{query} {userInterest}"
+            if userInterest is not None:
+                query = f"{userInterest} {query}"
+        if userHobbies is not None and userInterest is not None:
+            query = f"{userInterest} {userHobbies}"
         preprocessed_query = preprocess_text(query)
+        related_topics = extract_related_topics_for_embedding(preprocessed_query)
+        print(f"Related topics: {related_topics}")
         print(f"Preprocessed query: {preprocessed_query}")
+
         vector = get_albert_embedding(preprocessed_query)
-        return vector
+        return {
+            "vector": vector,
+            "related_topics": related_topics
+        }
     except Exception as e:
         print(f"Error in vectorize query: {str(e)}")
         traceback.print_exc()

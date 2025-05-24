@@ -33,15 +33,28 @@ class UserWorker {
           const combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
           const response = await textServiceAI.vectorizeText({ query: combinedText });
           const vectorizedData = response.vector;
+          const relatedTopics = response.related_topics;
           await UserModel.updateOne(
             { _id: key },
-            { $set: { user_vector: vectorizedData } }
+            { $set: { user_vector: vectorizedData, user_hobbies: { personal: relatedTopics } } }
           );
           await postCache.clearPersonalizedPostsCache(key);
         } catch (error) {
           log.error(`Error vectorizing data for user ${key}: ${(error as Error).message}`);
         }
       }
+      job.progress(100);
+      done(null, job.data);
+    } catch (error) {
+      log.error(error);
+      done(error as Error);
+    }
+  }
+
+  async updateUserHobbies(job: Job, done: DoneCallback): Promise<void> {
+    try {
+      const { key, value } = job.data;
+      await userService.updateUserHobbies(key, value);
       job.progress(100);
       done(null, job.data);
     } catch (error) {

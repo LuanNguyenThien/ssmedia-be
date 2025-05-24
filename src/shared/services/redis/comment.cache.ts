@@ -35,7 +35,7 @@ export class CommentCache extends BaseCache {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-      await this.client.LREM(`comments:${postId}`, 0, commentId);
+      await this.client.DEL(`comments:${postId}`);
       const commentsCount: string[] = await this.client.HMGET(`posts:${postId}`, 'commentsCount');
       let count: number = Helpers.parseJson(commentsCount[0]) as number;
       count -= 1;

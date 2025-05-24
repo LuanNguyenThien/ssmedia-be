@@ -42,6 +42,25 @@ categories = whitelist_categories + blacklist_categories
 tfidf = TfidfVectorizer()
 tfidf.fit([' '.join(categories)])
 
+def extract_related_topics_for_embedding(preprocessed_query):
+    # Tìm phần văn bản giữa "related topics" và "summary"
+    pattern = r"related topics([\s\S]*?)(?:summary|$)"
+    match = re.search(pattern, preprocessed_query.lower())
+    
+    if not match:
+        return ""
+    
+    # Lấy toàn bộ phần content của related topics
+    topics_text = match.group(1).strip()
+    
+    # Thay thế xuống dòng bằng khoảng trắng 
+    clean_topics = re.sub(r'[\n\r]\s+', ' ', topics_text)
+    # Loại bỏ các ký tự thừa như số thứ tự, dấu gạch đầu dòng
+    clean_topics = re.sub(r'[-•*\d\.]+\s*', '', clean_topics)
+    # Xử lý các khoảng trắng liên tiếp thành một khoảng trắng duy nhất
+    # clean_topics = re.sub(r'\s+', ' ', clean_topics)
+    
+    return clean_topics.strip()
 
 def connect_to_mongodb(db_name, collection_name):
     client = MongoClient(Config.MONGODB_URI)
@@ -55,7 +74,8 @@ collection = connect_to_mongodb(db_name, collection_name)
 def preprocess_text(text):
     # Tiền xử lý văn bản
     text = text.lower()
-    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'[^\w\s]', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
     return text
 
 def combine_text(content_summary, main_topics, disciplines, key_concepts, range_age_suitable, related_topics, content_tags, potential_outcomes):
@@ -88,6 +108,29 @@ def is_meaningful_text(text):
     # Kiểm tra xem văn bản có chứa ít nhất một từ có nghĩa không
     words = re.findall(r'\b\w+\b', text)
     return len(words) > 0
+
+def get_improved_embedding(text):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512, padding=True)
+    
+    with torch.no_grad():
+        outputs = model(**inputs)
+    
+    # Sử dụng [CLS] token thay vì mean-pooling
+    return outputs.last_hidden_state[:, 0, :].squeeze().numpy()
+
+def get_attention_weighted_embedding(text):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512, padding=True)
+    
+    with torch.no_grad():
+        outputs = model(**inputs, output_attentions=True)
+    
+    # Lấy last layer attention weights
+    attention = outputs.attentions[-1].mean(dim=1)  # average over heads
+    
+    # Áp dụng attention weights cho hidden states
+    weighted_states = outputs.last_hidden_state * attention.sum(dim=1).unsqueeze(-1)
+    
+    return weighted_states.sum(dim=1).squeeze().numpy()
 
 def get_albert_embedding(text):
     # Tokenize văn bản
