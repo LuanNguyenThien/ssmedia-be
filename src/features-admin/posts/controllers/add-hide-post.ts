@@ -21,8 +21,13 @@ export class Add {
       };
 
       // Cập nhật cache với type assertion
-      const postUpdated = await postCache.updatePostInCache(postId, updatedPost as IPostDocument);
-      await postService.hidePost(postId, reason);
+       await postCache.updatePostInCache(postId, updatedPost as IPostDocument);
+       const postUpdated = await postService.hidePost(postId, reason);
+       console.log('Post updated:', postUpdated);
+       if(!postUpdated) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Post not found' })
+        ;
+        return;}
       socketIOPostObject.emit('hide post', { postId, reason }); 
       res.status(HTTP_STATUS.OK).json({ message: 'Post hidden successfully' });
     } catch (error) {
