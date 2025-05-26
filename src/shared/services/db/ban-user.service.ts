@@ -71,24 +71,28 @@ class UserBanService {
   public async getUsersFromAppeals(skip: number, limit: number): Promise<any[]> {
     try {
       // Lấy các appeals có userId, content, status, createdAt
-      const appeals = await AppealModel.find().select('userId content status createdAt').skip(skip).limit(limit); // Phân trang ở bước này
+      const appeals = await AppealModel.find().select('userId content status createdAt').skip(skip).limit(limit); // Phân trang
 
       const userIds = appeals.map((appeal) => appeal.userId);
       const users = await UserModel.find({ _id: { $in: userIds } });
 
       const authIds = users.map((user) => user.authId).filter(Boolean);
-      const auths = await AuthModel.find({ _id: { $in: authIds } }).select('username');
-      const authMap = new Map(auths.map((auth) => [auth._id.toString(), auth.username]));
+      const auths = await AuthModel.find({ _id: { $in: authIds } }).select('username uId');
 
+      // Map authId -> auth object (gồm username và uId)
+      const authMap = new Map(auths.map((auth) => [auth._id.toString(), auth]));
+
+      // Map userId -> user
       const userMap = new Map(users.map((user) => [user._id.toString(), user]));
 
       const result = appeals.map((appeal) => {
         const user = userMap.get(appeal.userId.toString());
-        const username = authMap.get(user?.authId?.toString() || '');
+        const auth = authMap.get(user?.authId?.toString() || '');
 
         return {
           ...user?.toObject(),
-          username,
+          username: auth?.username,
+          uId: auth?.uId,
           appeal: {
             _id: appeal._id,
             content: appeal.content,
