@@ -19,6 +19,7 @@ export interface IUserDocument extends Document {
   blockedBy: mongoose.Types.ObjectId[];
   followersCount: number;
   followingCount: number;
+  personalizeSettings?: IPersonalizeSettings;
   notifications: INotificationSettings;
   social: ISocialLinks;
   bgImageVersion: string;
@@ -26,6 +27,14 @@ export interface IUserDocument extends Document {
   profilePicture: string;
   createdAt?: Date;
   user_vector?: number[];
+  user_hobbies?: {
+    personal?: string;
+    subject?: string;
+  };
+}
+
+export interface IPersonalizeSettings {
+  allowPersonalize: boolean;
 }
 
 export interface IResetPasswordParams {

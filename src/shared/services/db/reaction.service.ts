@@ -45,11 +45,20 @@ class ReactionService {
         ).lean() // Use lean for performance
       ])) as unknown as [IUserDocument, IReactionDocument, IPostDocument];
 
-      if(type === 'upvote' && postDoc) {
-        await postCache.clearPersonalizedPostsCache(userFrom as string);
-        // Save user interests from the post analysis
-        await userBehaviorCache.saveUserInterests(userFrom as string, postId, postDoc);
+      const currentUser = await userCache.getUserFromCache(`${userFrom}`);
+      console.log('currentUser', currentUser?.personalizeSettings?.allowPersonalize);
+      if(currentUser?.personalizeSettings?.allowPersonalize !== false) {
+        if(type === 'upvote' && postDoc) {
+          await postCache.clearPersonalizedPostsCache(userFrom as string);
+          // Save user interests from the post analysis
+          await userBehaviorCache.saveUserInterests(userFrom as string, postId, postDoc);
+        }
+        if(type === 'downvote' && postDoc) {
+          await postCache.clearPersonalizedPostsCache(userFrom as string);
+          await userBehaviorCache.removeUserInterests(userFrom as string, postId);
+        }
       }
+
       // Early exit if notification is not needed
       if (!userDoc?.notifications?.reactions || userTo === userFrom) return;
 
@@ -111,7 +120,7 @@ class ReactionService {
   }
 
   public async removeReactionDataFromDB(reactionData: IReactionJob): Promise<void> {
-    const { postId, previousReaction, username } = reactionData;
+    const { postId, previousReaction, username, userFrom } = reactionData;
     await Promise.all([
       ReactionModel.deleteOne({ postId, type: previousReaction, username }),
       PostModel.updateOne(
@@ -124,6 +133,14 @@ class ReactionService {
         { new: true }
       )
     ]);
+    const currentUser = await userCache.getUserFromCache(`${userFrom}`);
+      if(currentUser?.personalizeSettings?.allowPersonalize !== false) {
+        if(previousReaction === 'upvote') {
+          await postCache.clearPersonalizedPostsCache(userFrom as string);
+          // Save user interests from the post analysis
+          await userBehaviorCache.removeUserInterests(userFrom as string, postId);
+        }
+      }
   }
 
   public async getPostReactions(query: IQueryReaction, sort: Record<string, 1 | -1>): Promise<[IReactionDocument[], number]> {

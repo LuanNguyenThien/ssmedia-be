@@ -25,6 +25,10 @@ async def analyze_post(request: AnalyzeRequest):
             video_urls = mediaItems.get('videos', [])
             audio_urls = mediaItems.get('audios', [])
 
+        gifUrl = value.get('gifUrl', None)
+        if gifUrl is not None:
+            image_urls.append(gifUrl)
+
         if value['imgId'] != '' and value['imgVersion'] != '':
             # Clean the version and id strings by removing any quotes
             img_id = value['imgId'].replace("'", "").replace('"', '')
@@ -66,8 +70,22 @@ async def vectorize(request: VectorizeRequest):
         userInterest = value.get('userInterest', None)
         if userInterest == '':
             userInterest = None
-        vector_query = await vectorize_query(query_text, image, userInterest)  # Tiền xử lý văn bản với hình ảnh và sở thích người dùng
-        return JSONResponse(content={"vector": vector_query.tolist()})  # Trả lại vector dưới dạng JSON
+        userHobbies = value.get('userHobbies', None)
+        if userHobbies == '':
+            userHobbies = None
+        
+        # Nhận kết quả từ vectorize_query
+        result = await vectorize_query(query_text, image, userInterest, userHobbies)
+
+        # Kiểm tra lỗi
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+            
+        # Trả về cả vector và related_topics
+        return JSONResponse(content={
+            "vector": result["vector"].tolist(),
+            "related_topics": result["related_topics"]
+        })
     except Exception as e:
         print("Error:", str(e))
         raise HTTPException(status_code=500, detail=str(e))

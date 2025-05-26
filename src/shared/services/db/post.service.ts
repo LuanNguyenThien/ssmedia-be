@@ -88,19 +88,34 @@ class PostService {
       return [];
     } else {
       let userVector: number[] = user.user_vector as number[];
-      console.log(userVector);
-      const userInterest: string[] = await userbehaviorCache.getUserInterests(userId);
-      console.log('User interests:', userInterest);
-      if (userInterest.length > 0) {
-        let combinedText = '';
-        if(user.quote || user.school || user.work || user.location) {
-          combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
+      if (user?.personalizeSettings?.allowPersonalize !== false) {
+        const userHobbies: string = user.user_hobbies?.personal + ' ' + user.user_hobbies?.subject as string;
+        console.log(userVector);
+        const userInterest: string[] = await userbehaviorCache.getUserInterests(userId);
+        console.log('User interests:', userInterest);
+        if (userInterest.length > 0 || userVector.length === 0) {
+          let combinedText = '';
+          if(user.quote || user.school || user.work || user.location) {
+            combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}`;
+          }
+          let response;
+          if (userHobbies && userHobbies.trim().length > 0) {
+            response = await textServiceAI.vectorizeText({ query: combinedText, userInterest, userHobbies });
+          }
+          else {
+            if (combinedText.trim().length === 0 && userInterest.length === 0) {
+              return await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
+            }
+            response = await textServiceAI.vectorizeText({ query: combinedText, userInterest });
+            await UserModel.updateOne(
+              { _id: userId },
+              { $set: { user_hobbies: { personal: response.related_topics } } }
+            );
+          }
+          const updatedUserVector: number[] = response.vector;
+          await UserModel.updateOne({ _id: userId }, { $set: { user_vector: updatedUserVector } });
+          userVector = updatedUserVector;
         }
-        const response = await textServiceAI.vectorizeText({ query: combinedText, userInterest });
-        const updatedUserVector: number[] = response.vector;
-        console.log('Updated user vector:', updatedUserVector);
-        await UserModel.updateOne({ _id: userId }, { $set: { user_vector: updatedUserVector } });
-        userVector = updatedUserVector;
       }
       if (!userVector || userVector.length === 0) {
         const posts = await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
@@ -109,11 +124,6 @@ class PostService {
       }
       const posts = await this.searchPostsByVector(userVector, mongoSkip, mongoLimit, userId);
       return posts;
-
-
-
-
-
     }
   }
 
@@ -181,7 +191,7 @@ class PostService {
         }
       }
     ];
-    console.log('Pipeline:', JSON.stringify(pipeline, null, 2));
+    // console.log('Pipeline:', JSON.stringify(pipeline, null, 2));
 
     const mongoPosts = await PostModel.aggregate(pipeline).exec();
     if (mongoSkip !== undefined && mongoLimit !== undefined) {

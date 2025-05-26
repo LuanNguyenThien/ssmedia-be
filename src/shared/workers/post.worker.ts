@@ -14,10 +14,12 @@ import { NotificationModel } from '@notification/models/notification.schema';
 import { Helpers } from '@global/helpers/helpers';
 
 const postCache = cache.postCache;
+const userCache = cache.userCache;
+const userBehaviorCache = cache.userBehaviorCache;
 
 const log: Logger = config.createLogger('postWorker');
 
-const W1 = 1.0, W2 = 0.5, W3 = 10.0, W4 = 10.0, W5 = 0.1;
+const W1 = 10.0, W2 = 15.0, W3 = 10.0, W4 = 10.0, W5 = 0.2;
 
 class PostWorker {
   private extractContentFromHtml(html: string): {mediaItems: Array<{type: string, url: string}> } {
@@ -213,8 +215,14 @@ class PostWorker {
           }
         } as IPostDocument;
         await Update.prototype.serverUpdatePost(value._id, updatedPost);
-        
+        const currentUser = await userCache.getUserFromCache(`${value.userId}`);
+        if(currentUser?.personalizeSettings?.allowPersonalize !== false) {
+          await postCache.clearPersonalizedPostsCache(value.userId as string);
+          // Save user interests from the post analysis
+          await userBehaviorCache.saveUserInterests(value.userId as string, value._id, updatedPost);
+        }
         const trendingScore = PostWorker.prototype.calculateTrendingScore(updatedPost, value.reactions, value.commentsCount);
+        console.log('Trending Score:', value);
         await postCache.addTrendingPost(value._id, trendingScore);
       }
 
@@ -228,13 +236,11 @@ class PostWorker {
     if (!reactions || reactions.length === 0) 
       return commentsCount * W1;
     if (!post.analysis) {
-      return post.commentsCount * W1 + (reactions.like + reactions.love + reactions.happy +
-        reactions.wow - reactions.sad - reactions.angry) * W2;
+      return commentsCount * W1 + (reactions.upvote - reactions.downvote) * W2;
     }
     return (
       commentsCount * W1 +
-      (reactions.like + reactions.love + reactions.happy +
-        reactions.wow - reactions.sad - reactions.angry) * W2 +
+      (reactions.upvote - reactions.downvote) * W2 +
       (post.analysis.educationalValue ?? 0) * W3 +
       (post.analysis.relevance ?? 0) * W4 +
       (post.analysis.engagementPotential ?? 0) * W5

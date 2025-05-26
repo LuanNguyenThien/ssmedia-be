@@ -284,6 +284,62 @@ export class PostCache extends BaseCache {
     }
   }
 
+  public async updatePostScore(
+    postId: string,
+    addCmt: boolean = false,
+    removeCmt: boolean = false,
+    previousVote: string = 'upvote',
+    vote: string = 'upvote',
+    removeVote: boolean = false
+  ): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+
+      // Lấy score hiện tại của postId từ sorted set
+      const currentScore = await this.client.zScore('postTrending', postId);
+      if (currentScore === null) {
+        log.error('Post not found in trending list.');
+        return;
+      }
+
+      // Tính toán score mới dựa trên các hành động
+      let scoreDelta = 0;
+      if (addCmt) {
+        scoreDelta = 10;
+      } else if (removeCmt) {
+        scoreDelta = -10;
+      } else if (previousVote === 'upvote' && vote === 'downvote') {
+        scoreDelta = -30;
+      } else if (previousVote === 'downvote' && vote === 'upvote') {
+        scoreDelta = 30;
+      } else if (vote === 'upvote' && !removeVote) {
+        scoreDelta = 15;
+      } else if (vote === 'upvote' && removeVote) {
+        scoreDelta = -15;
+      } else if (vote === 'downvote' && !removeVote) {
+        scoreDelta = -15;
+      } else if (vote === 'downvote' && removeVote) {
+        scoreDelta = 15;
+      }
+
+      const newScore = currentScore + scoreDelta;
+
+      // Cập nhật score mới vào sorted set
+      await this.client.zAdd('postTrending', { score: newScore, value: postId });
+
+      // Giới hạn số lượng bài viết trending lưu trữ trong Redis
+      const trendingCount = await this.client.zCard('postTrending');
+      if (trendingCount > TRENDING_LIMIT) {
+        await this.client.zRemRangeByRank('postTrending', 0, trendingCount - TRENDING_LIMIT - 1);
+      }
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
   public async getPostFromCache(postId: string): Promise<IPostDocument | null> {
     try {
       if (!this.client.isOpen) {

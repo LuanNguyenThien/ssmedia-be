@@ -15,6 +15,7 @@ export class Remove {
     const databaseReactionData: IReactionJob = {
       postId,
       username: req.currentUser!.username,
+      userFrom: req.currentUser!.userId,
       previousReaction
     };
     reactionQueue.addReactionJob('removeReactionFromDB', databaseReactionData);

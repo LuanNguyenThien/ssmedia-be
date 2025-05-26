@@ -76,6 +76,8 @@ export class Update {
       _id: postUpdated._id,
       userId: postUpdated.userId,
       createdAt: postUpdated.createdAt,
+      reactions: postUpdated.reactions,
+      commentsCount: postUpdated.commentsCount,
     } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
@@ -143,6 +145,8 @@ export class Update {
       _id: postUpdated._id,
       userId: postUpdated.userId,
       createdAt: postUpdated.createdAt,
+      reactions: postUpdated.reactions,
+      commentsCount: postUpdated.commentsCount,
     } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
@@ -192,6 +196,8 @@ export class Update {
       _id: postUpdated._id,
       userId: postUpdated.userId,
       createdAt: postUpdated.createdAt,
+      reactions: postUpdated.reactions,
+      commentsCount: postUpdated.commentsCount,
     } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });

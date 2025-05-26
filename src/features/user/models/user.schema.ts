@@ -17,6 +17,9 @@ const userSchema: Schema = new Schema({
     comments: { type: Boolean, default: true },
     follows: { type: Boolean, default: true }
   },
+  personalizeSettings: {
+    allowPersonalize: { type: Boolean, default: true }
+  },
   social: {
     facebook: { type: String, default: '' },
     instagram: { type: String, default: '' },
@@ -29,7 +32,11 @@ const userSchema: Schema = new Schema({
   quote: { type: String, default: '' },
   bgImageVersion: { type: String, default: '' },
   bgImageId: { type: String, default: '' },
-  user_vector: { type: [Number] }
+  user_vector: { type: [Number] },
+  user_hobbies: { 
+    personal: {type: String, default: '' },
+    subject: {type: String, default: '' },
+  },
 });
 
 const UserModel: Model<IUserDocument> = model<IUserDocument>('User', userSchema, 'User');

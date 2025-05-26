@@ -25,8 +25,11 @@ class UserRoutes {
     this.router.put('/user/profile/change-password', authMiddleware.checkAuthentication, Update.prototype.password);
     this.router.put('/user/profile/basic-info', authMiddleware.checkAuthentication, Edit.prototype.info);
     this.router.put('/user/profile/social-links', authMiddleware.checkAuthentication, Edit.prototype.social);
+    this.router.put('/user/profile/personal-hobby', authMiddleware.checkAuthentication, Edit.prototype.personalHobby);
     this.router.put('/user/profile/settings', authMiddleware.checkAuthentication, UpdateSettings.prototype.notification);
-
+    this.router.put('/user/profile/personalize-settings', authMiddleware.checkAuthentication, UpdateSettings.prototype.personalizeSettings);
+    this.router.put('/user/profile/personalize-settings/clear', authMiddleware.checkAuthentication, UpdateSettings.prototype.clearAllPersonalized);
+    this.router.put('/user/profile/personalize-settings/clear/user-behavior', authMiddleware.checkAuthentication, UpdateSettings.prototype.clearUserBehaviorPersonalized);
     return this.router;
   }
 }

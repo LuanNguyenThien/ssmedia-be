@@ -7,6 +7,7 @@ import { PostModel } from '@post/models/post.schema';
 import mongoose from 'mongoose';
 import { cache } from '@service/redis/cache';
 const commentCache = cache.commentCache;
+const postCache = cache.postCache;
 
 export class Delete {
   public async comment(req: Request, res: Response): Promise<void> {
@@ -32,13 +33,15 @@ export class Delete {
     await CommentsModel.deleteOne({ _id: commentId });
 
     // Delete the comment from the cache
-    await commentCache.deletePostCommentFromCache(postId, commentId);
+    await commentCache.deletePostCommentFromCache(postId.toString(), commentId);
    
     // Decrement the commentsCount in the post
     await PostModel.updateOne(
       { _id: postId },
       { $inc: { commentsCount: -1 } }
     );
+
+    await postCache.updatePostScore(postId.toString(), false, true);
     
     res.status(HTTP_STATUS.OK).json({ message: 'Comment deleted successfully' });
   }
