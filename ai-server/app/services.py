@@ -408,13 +408,18 @@ async def vectorize_query(query, image=None, userInterest=None, userHobbies=None
                     except Exception as e:
                         print(f"Error fetching image from URL: {str(e)}")
                         image = None
+        preprocessed_query = None
         if (query is not None and query != '' and userHobbies is None) or (image is not None):
             query = await clarify_text_for_vectorization(query, image)
+            preprocessed_query = query
             if userInterest is not None:
-                query = f"{userInterest} {query}"
-        if userHobbies is not None and userInterest is not None:
-            query = f"{userInterest} {userHobbies}"
-        preprocessed_query = preprocess_text(query)
+                preprocessed_query = f"{userInterest} {query}"
+        if (preprocessed_query is None or preprocessed_query == ''):
+            if userHobbies is not None or (userInterest is not None and userInterest):
+                preprocessed_query = f"{userInterest} {userHobbies}"
+        
+        print(preprocessed_query)
+        preprocessed_query = preprocess_text(preprocessed_query)
         related_topics = extract_related_topics_for_embedding(preprocessed_query)
         print(f"Related topics: {related_topics}")
         print(f"Preprocessed query: {preprocessed_query}")

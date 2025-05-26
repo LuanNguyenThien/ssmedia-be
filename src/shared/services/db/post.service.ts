@@ -99,14 +99,20 @@ class PostService {
             combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}`;
           }
           let response;
-          if (userHobbies){
+          if (userHobbies && userHobbies.trim().length > 0) {
             response = await textServiceAI.vectorizeText({ query: combinedText, userInterest, userHobbies });
           }
           else {
+            if (combinedText.trim().length === 0 && userInterest.length === 0) {
+              return await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
+            }
             response = await textServiceAI.vectorizeText({ query: combinedText, userInterest });
+            await UserModel.updateOne(
+              { _id: userId },
+              { $set: { user_hobbies: { personal: response.related_topics } } }
+            );
           }
           const updatedUserVector: number[] = response.vector;
-          console.log('Updated user vector:', updatedUserVector);
           await UserModel.updateOne({ _id: userId }, { $set: { user_vector: updatedUserVector } });
           userVector = updatedUserVector;
         }
@@ -185,7 +191,7 @@ class PostService {
         }
       }
     ];
-    console.log('Pipeline:', JSON.stringify(pipeline, null, 2));
+    // console.log('Pipeline:', JSON.stringify(pipeline, null, 2));
 
     const mongoPosts = await PostModel.aggregate(pipeline).exec();
     if (mongoSkip !== undefined && mongoLimit !== undefined) {

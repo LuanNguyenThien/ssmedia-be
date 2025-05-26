@@ -23,6 +23,7 @@ export class UpdateSettings {
     res.status(HTTP_STATUS.OK).json({ message: 'Notification settings updated successfully', settings: req.body });
   }
   public async personalizeSettings(req: Request, res: Response): Promise<void> {
+    await postCache.clearPersonalizedPostsCache(`${req.currentUser!.userId}`);
     await userCache.updateSingleUserItemInCache(`${req.currentUser!.userId}`, 'personalizeSettings', req.body);
     await userService.updatePersonalizeSettings(`${req.currentUser!.userId}`, req.body);
     res.status(HTTP_STATUS.OK).json({ message: 'Personalize settings updated successfully', settings: req.body });
