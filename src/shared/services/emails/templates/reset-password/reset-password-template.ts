@@ -10,7 +10,7 @@ class ResetPasswordTemplate {
       email,
       ipaddress,
       date,
-      image_url: 'https://w7.pngwing.com/pngs/120/102/png-transparent-padlock-logo-computer-icons-padlock-technic-logo-password-lock.png'
+      image_url: 'https://cdn-icons-png.freepik.com/512/9578/9578810.png'
     });
   }
 }
