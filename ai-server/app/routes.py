@@ -84,7 +84,8 @@ async def vectorize(request: VectorizeRequest):
         # Trả về cả vector và related_topics
         return JSONResponse(content={
             "vector": result["vector"].tolist(),
-            "related_topics": result["related_topics"]
+            "related_topics": result["related_topics"],
+            "preprocessed_query": result["preprocessed_query"]
         })
     except Exception as e:
         print("Error:", str(e))

@@ -117,9 +117,10 @@ export class Get {
           posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
           totalPosts = redisCount;
         } else {
-          const formattedPosts = newPosts.map((post) => ({ _id: post._id as string, score: post.score as number }));
+          const formattedPosts = newPosts.map((post) => ({ _id: post._id as string, score: post.score as number, isQuestion: (post.htmlPost as string === '' || post.htmlPost === undefined) }));
           console.log(formattedPosts);
           await postCache.savePostsforUserToCache(redisKey, formattedPosts);
+          await postCache.saveQuestionsForUserToCache(userId, formattedPosts);
           if(redisCount === 0) { skip = 0; }
 
           posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
@@ -136,6 +137,53 @@ export class Get {
       });
     }
   }
+
+  public async questions(req: Request, res: Response): Promise<void> {
+    try {
+      const { page } = req.params;
+      const userId = req.currentUser!.userId;
+      let skip: number = (parseInt(page) - 1) * PAGE_SIZE;
+      const limit: number = PAGE_SIZE * parseInt(page);
+      const newSkip: number = skip === 0 ? skip : skip + 1;
+      let questions: IPostDocument[] = [];
+      let totalQuestions = 0;
+      const redisKey = `user:${userId}:posts`;
+      const cachedQuestions: IPostDocument[] = await postCache.getQuestionsForUserFromCache(userId, newSkip, limit);
+      if (cachedQuestions.length === limit) {
+        questions = cachedQuestions;
+        totalQuestions = await postCache.getTotalQuestionsforUser(userId);
+      }
+      else {
+        // Lấy thêm bài viết từ MongoDB
+        const redisCount = await postCache.getTotalPostsforUser(redisKey);
+        const mongoSkip = redisCount;
+        const mongoLimit = REDIS_BATCH_SIZE;
+        const newPosts = await postService.getPostsforUserByVector(userId, mongoSkip, mongoLimit);
+
+        if (newPosts.length === 0) {
+          questions = await postCache.getQuestionsForUserFromCache(userId, skip, limit);
+          totalQuestions = await postCache.getTotalQuestionsforUser(userId);
+        } else {
+          const formattedPosts = newPosts.map((post) => ({ _id: post._id as string, score: post.score as number, isQuestion: (post.htmlPost as string === '' || post.htmlPost === undefined) }));
+          console.log(formattedPosts);
+          await postCache.savePostsforUserToCache(redisKey, formattedPosts);
+          await postCache.saveQuestionsForUserToCache(userId, formattedPosts);
+          if(redisCount === 0) { skip = 0; }
+
+          questions = await postCache.getQuestionsForUserFromCache(userId, skip, limit);
+          totalQuestions = await postService.postsCount();
+        }
+      }
+      res.status(HTTP_STATUS.OK).json({ message: 'All posts', questions, totalQuestions });
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: 'Error fetching posts',
+        error: (error as Error).message
+      });
+    }
+  }
+
 
   public async postsWithImages(req: Request, res: Response): Promise<void> {
     const { page } = req.params;

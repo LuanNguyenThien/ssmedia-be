@@ -9,6 +9,7 @@ import { UserModel } from '@user/models/user.schema';
 
 // const userCache: UserCache = new UserCache();
 const userCache = cache.userCache;
+const postCache = cache.postCache;
 
 export class Edit {
   public async personalHobby(req: Request, res: Response): Promise<void> {
@@ -17,13 +18,13 @@ export class Edit {
     //   key: `${req.currentUser!.userId}`,
     //   value: req.body
     // });
+    await postCache.clearPersonalizedPostsCache(`${req.currentUser!.userId}`);
     await UserModel.updateOne(
       { _id: `${req.currentUser!.userId}` },
       {
         $set: {
-          user_hobbies: {
-            subject: `${req.body.subject}`
-          }
+          "user_hobbies.subject": `${req.body.subject}`,
+          user_vector: []
         }
       }
     ).exec();

@@ -32,11 +32,11 @@ class UserWorker {
           const user = job.data.value;
           const combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}` ;
           const response = await textServiceAI.vectorizeText({ query: combinedText });
-          const vectorizedData = response.vector;
-          const relatedTopics = response.related_topics;
+          // const vectorizedData = response.vector;
+          const preprocessedQuery = response.preprocessed_query;
           await UserModel.updateOne(
             { _id: key },
-            { $set: { user_vector: vectorizedData, user_hobbies: { personal: relatedTopics } } }
+            { $set: { user_vector: [], "user_hobbies.personal": preprocessedQuery } }
           );
           await postCache.clearPersonalizedPostsCache(key);
         } catch (error) {

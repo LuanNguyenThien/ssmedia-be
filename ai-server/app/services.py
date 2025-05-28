@@ -34,10 +34,10 @@ async def clarify_text_for_vectorization(text, image=None):
             The summary should be a short paragraph, not a list, and should avoid generic statements. This summary is intended for semantic vectorization, 
             so it must capture the essence and most important points of the content clearly and succinctly.)
 
-        Avoid including unrelated terms or overly broad explanations. Use the following example as a reference format:
+        Avoid including unrelated terms or overly broad explanations. Use the following example as a reference format. Begin with the Main Idea, followed by Related Topics, and end with a Summary. Do not include Input Text or any other introductory phrases.:
         Example Input and Output:
-        Example Input: "Ôn thi học sinh giỏi sử"
-        Example Output:
+            Input: "Ôn thi học sinh giỏi sử"
+            Format Output:
         ---
 
         - **Main Idea**: Preparation for advanced history exams.
@@ -56,10 +56,11 @@ async def clarify_text_for_vectorization(text, image=None):
         - Study materials for history
         - Exam preparation techniques
         - Learning strategies for history
-        **The content focuses on preparing for the history exam for academically gifted students, emphasizing study strategies, key historical topics, and resources tailored for excelling in competitive academic settings.**
+        - Study skills for gifted students
+        - Competitive academic exams
+        **The content focuses on preparing for the history exam for academically gifted students, study strategies, key historical topics, historic document and historic resources tailored for excelling in competitive academic settings. Competition for gifted student.**
 
         ---
-
         Provide the result strictly in the format above, ensuring clarity, relevance, and conciseness.
             - Ensure domain-specific keywords dominate the list, with skills and strategies positioned only as secondary or supporting concepts.
             - Avoid generic modifiers or filler words unless they significantly impact meaning.
@@ -427,7 +428,8 @@ async def vectorize_query(query, image=None, userInterest=None, userHobbies=None
         vector = get_albert_embedding(preprocessed_query)
         return {
             "vector": vector,
-            "related_topics": related_topics
+            "related_topics": related_topics,
+            "preprocessed_query": preprocessed_query
         }
     except Exception as e:
         print(f"Error in vectorize query: {str(e)}")
