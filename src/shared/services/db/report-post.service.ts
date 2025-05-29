@@ -4,7 +4,7 @@ import { ReportPostModel } from '@report-posts/models/report-post.schema';
 import { IReportPostDocument } from '@report-posts/interfaces/report-post.interface';
 import { PostModel } from '@post/models/post.schema';
 import { postService } from './post.service';
-
+import { userService } from './user.service';
 class ReportPostService {
   // Thêm bài viết vào danh sách yêu thích
   public async addReportPost(reportPostData: IReportPostDocument): Promise<IReportPostDocument> {
@@ -24,19 +24,25 @@ class ReportPostService {
   }
 
   public async getReportPosts(skip: number, limit: number): Promise<{ total: number; reportposts: any[] }> {
-    const total = await ReportPostModel.countDocuments(); // Lấy tổng số report
+    const total = await ReportPostModel.countDocuments();
 
     const reportPosts: IReportPostDocument[] = await ReportPostModel.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
 
     const postIds: ObjectId[] = reportPosts.map((report) => new ObjectId(report.postId));
-
     const posts: IPostDocument[] = await PostModel.find({ _id: { $in: postIds } }).lean();
 
     const postMap = new Map(posts.filter((post) => post._id).map((post) => [post._id!.toString(), post]));
 
-    const combined = reportPosts.map((report) => ({
+    // Lấy thông tin user bằng userService.getUserById
+    // Giả sử userService được inject hoặc khởi tạo ở class này
+    const userPromises = reportPosts.map((report) => userService.getUserById(report.userId.toString()));
+    const users = await Promise.all(userPromises);
+
+    const combined = reportPosts.map((report, index) => ({
       report,
-      post: postMap.get(report.postId.toString()) || null
+      user: users[index] || null,
+      post: postMap.get(report.postId.toString()) || null,
+      
     }));
 
     return {

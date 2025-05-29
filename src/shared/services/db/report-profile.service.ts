@@ -12,14 +12,25 @@ class ReportProfileService {
     return await ReportProfileModel.create(reportProfileData);
   }
 
-  public async getReportProfiles(skip: number, limit: number): Promise<IUserDocument[]> {
-    const reportProfiles: IReportProfileDocument[] = await ReportProfileModel.find().exec();
+  public async getReportProfiles(skip: number, limit: number): Promise<any[]> {
+    // 1. Lấy reportProfiles phân trang
+    const reportProfiles: IReportProfileDocument[] = await ReportProfileModel.find().skip(skip).limit(limit).exec();
 
-    const reportedUserIds: string[] = reportProfiles.map((report) => report.reportedUserId);
+    // 2. Dùng Promise.all để gọi song song lấy user info cho reporter và reportedUser
+    const results = await Promise.all(
+      reportProfiles.map(async (report) => {
+        const reportedUser = await userService.getUserById(report.reportedUserId.toString());
+        const reporter = await userService.getUserById(report.reporterId.toString());
 
-    const users: IUserDocument[] = await userService.getUsers({ _id: { $in: reportedUserIds } }, skip, limit, { createAt: -1 });
+        return {
+          ...report.toObject(),
+          reportedUser,
+          reporter
+        };
+      })
+    );
 
-    return users;
+    return results;
   }
 
   public async updateReportProfileStatus(
@@ -30,7 +41,6 @@ class ReportProfileService {
 
     return updatedReport;
   }
-  
 }
 
 export const reportProfileService: ReportProfileService = new ReportProfileService();
