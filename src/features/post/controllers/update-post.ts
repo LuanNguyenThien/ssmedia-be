@@ -38,7 +38,7 @@ export class Update {
 
   @joiValidation(postSchema)
   public async posts(req: Request, res: Response): Promise<void> {
-    let { htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
+    let { type, htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
     const { postId } = req.params;
     if(htmlPost === undefined) {
       htmlPost = '';
@@ -57,7 +57,8 @@ export class Update {
       imgId,
       imgVersion,
       videoId: '',
-      videoVersion: ''
+      videoVersion: '',
+      type: type || htmlPost ? 'post' : 'question',
     } as IPostDocument;
 
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
@@ -78,6 +79,7 @@ export class Update {
       createdAt: postUpdated.createdAt,
       reactions: postUpdated.reactions,
       commentsCount: postUpdated.commentsCount,
+      type: postUpdated.type,
     } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
@@ -126,7 +128,8 @@ export class Update {
       imgId: imgId ? imgId : '',
       imgVersion: imgVersion ? imgVersion : '',
       videoId: videoId ? videoId : '',
-      videoVersion: videoVersion ? videoVersion : ''
+      videoVersion: videoVersion ? videoVersion : '',
+      type: 'question'
     } as IPostDocument;
 
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
@@ -147,6 +150,7 @@ export class Update {
       createdAt: postUpdated.createdAt,
       reactions: postUpdated.reactions,
       commentsCount: postUpdated.commentsCount,
+      type: postUpdated.type,
     } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });
@@ -177,7 +181,8 @@ export class Update {
       imgId: image ? result.public_id : '',
       imgVersion: image ? result.version.toString() : '',
       videoId: video ? result.public_id : '',
-      videoVersion: video ? result.version.toString() : ''
+      videoVersion: video ? result.version.toString() : '',
+      type: 'question'
     } as IPostDocument;
 
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);
@@ -198,6 +203,7 @@ export class Update {
       createdAt: postUpdated.createdAt,
       reactions: postUpdated.reactions,
       commentsCount: postUpdated.commentsCount,
+      type: postUpdated.type,
     } as IPostJobAnalysis;
     socketIOPostObject.emit('update post', postUpdated, 'posts');
     postQueue.addPostJob('updatePostInDB', { key: postId, value: postUpdated });

@@ -20,7 +20,7 @@ export class Create {
   @joiValidation(postSchema)
   public async post(req: Request, res: Response): Promise<void> {
     const { bgColor, privacy, gifUrl, profilePicture, feelings } = req.body;
-    let { post, htmlPost } = req.body;
+    let { post, htmlPost, type } = req.body;
     const postObjectId: ObjectId = new ObjectId();
     if (htmlPost === undefined) {
       htmlPost = '';
@@ -46,7 +46,8 @@ export class Create {
       videoId: '',
       videoVersion: '',
       createdAt: new Date(),
-      reactions: { upvote: 0, downvote: 0 }
+      reactions: { upvote: 0, downvote: 0 },
+      type: type || htmlPost ? 'post' : 'question',
     } as IPostDocument;
 
     const analyzePost = {
@@ -65,7 +66,8 @@ export class Create {
       videoId: '',
       videoVersion: '',
       userId: req.currentUser!.userId,
-      createdAt: new Date()  
+      createdAt: new Date(),
+      type: type || htmlPost ? 'post' : 'question',  
     } as IPostJobAnalysis;
 
     socketIOPostObject.emit('add post', createdPost);
@@ -109,7 +111,8 @@ export class Create {
       videoId: '',
       videoVersion: '',
       createdAt: new Date(),
-      reactions: { upvote: 0, downvote: 0 }
+      reactions: { upvote: 0, downvote: 0 },
+      type: 'question'
     } as IPostDocument;
     
     const analyzePost = {
@@ -128,6 +131,7 @@ export class Create {
       videoId: '',
       videoVersion: '',
       userId: req.currentUser!.userId,
+      type: 'question',
     } as IPostJobAnalysis;
 
     socketIOPostObject.emit('add post', createdPost);
@@ -175,7 +179,8 @@ export class Create {
       videoId: result.public_id,
       videoVersion: result.version.toString(),
       createdAt: new Date(),
-      reactions: { upvote: 0, downvote: 0 }
+      reactions: { upvote: 0, downvote: 0 },
+      type: 'question',
     } as IPostDocument;
     const analyzePost = {
       _id: postObjectId,
@@ -193,6 +198,7 @@ export class Create {
       videoId: result.public_id,
       videoVersion: result.version.toString(),
       userId: req.currentUser!.userId,
+      type: 'question',
     } as IPostJobAnalysis;
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({

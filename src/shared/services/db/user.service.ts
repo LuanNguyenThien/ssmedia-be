@@ -270,7 +270,9 @@ class UserService {
         status: '$reportProfileInfo.status'
       },
       user_hobbies: 1,
-      personalizeSettings: 1
+      personalizeSettings: {
+        $ifNull: ["$personalizeSettings", { allowPersonalize: true }]
+      }
     };
   }
 }
