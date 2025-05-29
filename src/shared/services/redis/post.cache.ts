@@ -305,7 +305,8 @@ export class PostCache extends BaseCache {
       videoId,
       videoVersion,
       reactions,
-      createdAt
+      createdAt,
+      type,
     } = createdPost;
 
     const dataToSave = {
@@ -327,7 +328,8 @@ export class PostCache extends BaseCache {
       'imgId': `${imgId}`,
       'videoId': `${videoId}`,
       'videoVersion': `${videoVersion}`,
-      'createdAt': `${createdAt}`
+      'createdAt': `${createdAt}`,
+      'type': `${type}`,
     };
 
     try {
@@ -648,7 +650,8 @@ export class PostCache extends BaseCache {
       profilePicture,
       isHidden,
       hiddenReason,
-      hiddenAt
+      hiddenAt,
+      type,
     } = updatedPost;
     const dataToSave = {
       'htmlPost': `${htmlPost}`,
@@ -663,8 +666,9 @@ export class PostCache extends BaseCache {
       'imgVersion': `${imgVersion}`,
       'imgId': `${imgId}`,
       'isHidden': `${isHidden}`,
-    'hiddenReason': `${hiddenReason}`,
-    'hiddenAt': hiddenAt ? new Date(hiddenAt).toISOString() : ''
+      'hiddenReason': `${hiddenReason}`,
+      'hiddenAt': hiddenAt ? new Date(hiddenAt).toISOString() : '',
+      'type': `${type}`,
     };
 
     try {
