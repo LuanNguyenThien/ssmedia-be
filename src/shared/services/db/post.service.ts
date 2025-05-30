@@ -229,13 +229,17 @@ class PostService {
     return post;
   }
 
-  public async getHiddenPosts(skip = 0, limit = 10): Promise<IPostDocument[]> {
-    const posts = await PostModel.find({ isHidden: true })
-      .sort({ createdAt: -1 }) // sắp xếp mới nhất
-      .skip(skip)
-      .limit(limit)
-      .exec();
-    return posts;
+  public async getHiddenPosts(skip = 0, limit = 5): Promise<{ posts: IPostDocument[]; total: number }> {
+    const [posts, total] = await Promise.all([
+      PostModel.find({ isHidden: true })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      PostModel.countDocuments({ isHidden: true })
+    ]);
+  
+    return { posts, total };
   }
 
   public async unhidePost(postId: string): Promise<void> {

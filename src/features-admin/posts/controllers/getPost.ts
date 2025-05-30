@@ -6,7 +6,7 @@ export class Get {
   public async getHiddenPosts(req: Request, res: Response): Promise<void> {
     try {
       const page = parseInt(req.params.page) || 1;
-      const PAGE_SIZE = 10;
+      const PAGE_SIZE = 5;
       const skip = (page - 1) * PAGE_SIZE;
 
       const hiddenPosts = await postService.getHiddenPosts(skip, PAGE_SIZE);
