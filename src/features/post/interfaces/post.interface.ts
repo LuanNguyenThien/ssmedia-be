@@ -49,6 +49,7 @@ export interface IPostDocument extends Document {
   isHidden?: Boolean;
   hiddenReason?: string;
   hiddenAt?: Date;
+  type?: string; // 'post', 'question', 'answer'
 }
 
 export interface IPostJobAnalysis {
@@ -65,6 +66,9 @@ export interface IPostJobAnalysis {
   videoId?: string;
   videoVersion?: string;
   createdAt?: Date;
+  reactions?: IReactions;
+  commentsCount?: number;
+  type?: string; // 'post', 'question', 'answer'
 }
 
 export interface IGetPostsQuery {

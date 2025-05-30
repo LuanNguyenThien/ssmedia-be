@@ -172,7 +172,9 @@ class PostService {
           numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit*5 : 200,
           limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit*1.5 : 10,
           filter: {
-            privacy: { $ne: 'Private' }
+            privacy: { $ne: 'Private' },
+            isHidden: { $ne: true },
+            type: { $ne: 'answer' } // Loại trừ các bài viết là câu trả lời
           }
         }
       } as any,

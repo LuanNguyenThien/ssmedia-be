@@ -56,6 +56,11 @@ const postSchema: Schema = new Schema({
   },
   hiddenAt: {
     type: Date
+  },
+  type: {
+    type: String,
+    enum: ['post', 'question', 'answer'],
+    default: 'post'
   }
 });
 

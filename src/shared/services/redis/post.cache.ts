@@ -136,6 +136,53 @@ export class PostCache extends BaseCache {
     }
   }
 
+  public async getQuestionsForUserFromCache(userId: string, skip: number, limit: number): Promise<IPostDocument[]> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      
+      const questionsKey = `user:${userId}:questions`;
+      const totalQuestions = await this.client.lLen(questionsKey);
+      
+      if (totalQuestions === 0) {
+        return [];
+      }
+      
+      const questionIds = await this.client.lRange(questionsKey, skip, skip + limit - 1);
+      
+      if (questionIds.length === 0) {
+        return [];
+      }
+      
+      const multi = this.client.multi();
+      for (const questionIdData of questionIds) {
+        const { _id } = JSON.parse(questionIdData);
+        multi.hGetAll(`posts:${_id}`);
+      }
+      
+      const replies = await multi.exec();
+      const questions: IPostDocument[] = [];
+      
+      for (const question of replies as unknown as IPostDocument[]) {
+        if (question) {
+          // Parse các trường cần thiết
+          if (question.isHidden === true) continue;
+
+          question.commentsCount = Helpers.parseJson(`${question.commentsCount}`) as number;
+          question.reactions = Helpers.parseJson(`${question.reactions}`) as IReactions;
+          question.createdAt = new Date(Helpers.parseJson(`${question.createdAt}`)) as Date;
+          questions.push(question);
+        }
+      }
+      
+      return questions;
+    } catch (error) {
+      log.error("Lỗi khi lấy questions từ cache", error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
   // public async updatePostforUserInCache(key: string, postId: string, updatedPost: IPostDocument): Promise<void> {
   //   try {
   //     if (!this.client.isOpen) {
@@ -170,6 +217,20 @@ export class PostCache extends BaseCache {
     }
   }
 
+  public async getTotalQuestionsforUser(userId: string): Promise<number> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      
+      const questionsKey = `user:${userId}:questions`;
+      return await this.client.lLen(questionsKey);
+    } catch (error) {
+      log.error("Lỗi khi lấy tổng số questions cho user", error, userId);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
   // public async savePostsforUserToCache(key: string, posts: IPostDocument[]): Promise<void> {
   //   try {
   //     if (!this.client.isOpen) {
@@ -184,12 +245,37 @@ export class PostCache extends BaseCache {
   //   }
   // }
 
-  public async savePostsforUserToCache(key: string, posts: { _id: string, score?: number }[]): Promise<void> {
+  public async saveQuestionsForUserToCache(userId: string, posts: { _id: string; score?: number; isQuestion?: boolean }[]): Promise<void> {
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-      const serializedPosts = posts.map(post => JSON.stringify({ _id: post._id, score: post.score }));
+
+      const questionsKey = `user:${userId}:questions`;
+      
+      // Lọc ra chỉ những post là question
+      const questions = posts.filter(post => post.isQuestion === true);
+      
+      if (questions.length > 0) {
+        const serializedQuestions = questions.map(question => 
+          JSON.stringify({ _id: question._id, score: question.score })
+        );
+        
+        // Sử dụng rPush để thêm vào cuối danh sách, giữ thứ tự như posts
+        await this.client.rPush(questionsKey, serializedQuestions);
+        await this.client.expire(questionsKey, 1800); // TTL 30 phút
+      }
+    } catch (error) {
+      log.error("Lỗi khi lưu questions vào cache", error, userId);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+  public async savePostsforUserToCache(key: string, posts: { _id: string, score?: number, isQuestion?: boolean }[]): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      const serializedPosts = posts.map(post => JSON.stringify({ _id: post._id, score: post.score, isQuestion: post.isQuestion }));
       await this.client.rPush(key, serializedPosts);
       await this.client.expire(key, 1800); // Đặt TTL là 30 phút (1800 giây)
     } catch (error) {
@@ -219,7 +305,8 @@ export class PostCache extends BaseCache {
       videoId,
       videoVersion,
       reactions,
-      createdAt
+      createdAt,
+      type,
     } = createdPost;
 
     const dataToSave = {
@@ -241,7 +328,8 @@ export class PostCache extends BaseCache {
       'imgId': `${imgId}`,
       'videoId': `${videoId}`,
       'videoVersion': `${videoVersion}`,
-      'createdAt': `${createdAt}`
+      'createdAt': `${createdAt}`,
+      'type': `${type}`,
     };
 
     try {
@@ -534,6 +622,7 @@ export class PostCache extends BaseCache {
       const postCount: string[] = await this.client.HMGET(`users:${currentUserId}`, 'postsCount');
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();
       multi.ZREM('post', `${key}`);
+      multi.ZREM('postTrending', `${key}`);
       multi.DEL(`posts:${key}`);
       multi.DEL(`comments:${key}`);
       multi.DEL(`reactions:${key}`);
@@ -561,7 +650,8 @@ export class PostCache extends BaseCache {
       profilePicture,
       isHidden,
       hiddenReason,
-      hiddenAt
+      hiddenAt,
+      type,
     } = updatedPost;
     const dataToSave = {
       'htmlPost': `${htmlPost}`,
@@ -576,8 +666,9 @@ export class PostCache extends BaseCache {
       'imgVersion': `${imgVersion}`,
       'imgId': `${imgId}`,
       'isHidden': `${isHidden}`,
-    'hiddenReason': `${hiddenReason}`,
-    'hiddenAt': hiddenAt ? new Date(hiddenAt).toISOString() : ''
+      'hiddenReason': `${hiddenReason}`,
+      'hiddenAt': hiddenAt ? new Date(hiddenAt).toISOString() : '',
+      'type': `${type}`,
     };
 
     try {

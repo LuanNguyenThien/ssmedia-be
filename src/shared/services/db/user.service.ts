@@ -268,6 +268,10 @@ class UserService {
         description: '$reportProfileInfo.description',
         createdAt: '$reportProfileInfo.createdAt',
         status: '$reportProfileInfo.status'
+      },
+      user_hobbies: 1,
+      personalizeSettings: {
+        $ifNull: ["$personalizeSettings", { allowPersonalize: true }]
       }
     };
   }

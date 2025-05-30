@@ -221,9 +221,11 @@ class PostWorker {
           // Save user interests from the post analysis
           await userBehaviorCache.saveUserInterests(value.userId as string, value._id, updatedPost);
         }
-        const trendingScore = PostWorker.prototype.calculateTrendingScore(updatedPost, value.reactions, value.commentsCount);
-        console.log('Trending Score:', value);
-        await postCache.addTrendingPost(value._id, trendingScore);
+        if(value.type !== 'answer') {
+          const trendingScore = PostWorker.prototype.calculateTrendingScore(updatedPost, value.reactions, value.commentsCount);
+          console.log('Trending Score:', value);
+          await postCache.addTrendingPost(value._id, trendingScore);
+        }
       }
 
     } catch (error) {
