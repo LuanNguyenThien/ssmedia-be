@@ -108,6 +108,31 @@ class PostWorker {
     const { value } = job.data;
 
     try {
+      const notificationModel: INotificationDocument = new NotificationModel();
+      if(value.type === 'answer') {
+        const formattedDateAnswer = Helpers.formattedDate(value.createdAt.toString());
+        const formattedDateQuestion = Helpers.formattedDate(value.questionCreatedAt.toString());
+        const message = `Your question at ${formattedDateQuestion} has been answered by ${value.username}.`;
+        const answerNotification = await notificationModel.insertNotification({
+          userFrom: value.userId,
+          userTo: value.questionUserId,
+          message,
+          notificationType: 'post-answer',
+          entityId: new mongoose.Types.ObjectId(value.questionId),
+          createdItemId: new mongoose.Types.ObjectId(value._id),
+          createdAt: new Date(),
+          post: value.questionPost,
+          htmlPost: value.questionHtmlPost,
+          imgId: value.questionImgId!,
+          imgVersion: value.questionImgVersion!,
+          gifUrl: value.questiongifUrl!,
+          comment: '',
+          reaction: '',
+          post_analysis: '',
+          answer: `Your question has been answered by ${value.username} at ${formattedDateAnswer}. Please check the answer.`,
+        });
+        socketIONotificationObject.emit('insert notification', answerNotification, { userTo: value.questionUserId });
+      }
       // Extract media items from HTML content
       const { mediaItems } = postWorker.extractContentFromHtml(value.htmlPost);
       // Select a subset of media items for analysis
@@ -160,7 +185,7 @@ class PostWorker {
         } as IPostDocument;
 
         await Update.prototype.serverUpdatePost(value._id, updatedPost);
-        const notificationModel: INotificationDocument = new NotificationModel();
+
         const notifications = await notificationModel.insertNotification({
           userFrom: '68032172bdacab3e39fed6e7',
           userTo: value.userId,
@@ -216,10 +241,14 @@ class PostWorker {
         } as IPostDocument;
         await Update.prototype.serverUpdatePost(value._id, updatedPost);
         const currentUser = await userCache.getUserFromCache(`${value.userId}`);
-        if(currentUser?.personalizeSettings?.allowPersonalize !== false) {
+        if(currentUser?.personalizeSettings?.allowPersonalize !== false && value.type !== 'answer') {
           await postCache.clearPersonalizedPostsCache(value.userId as string);
           // Save user interests from the post analysis
           await userBehaviorCache.saveUserInterests(value.userId as string, value._id, updatedPost);
+        }else if(currentUser?.personalizeSettings?.allowPersonalize !== false && value.type === 'answer') {
+          await postCache.clearPersonalizedPostsCache(value.userId as string);
+          // Save user interests from the post analysis
+          await userBehaviorCache.saveUserInterests(value.userId as string, value.questionId, value.question);
         }
         if(value.type !== 'answer') {
           const trendingScore = PostWorker.prototype.calculateTrendingScore(updatedPost, value.reactions, value.commentsCount);

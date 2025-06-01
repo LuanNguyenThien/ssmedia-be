@@ -4,6 +4,7 @@ import { serverAdapter } from '@service/queues/base.queue';
 import { currentUserRoutes } from '@auth/routes/currentRoutes';
 import { authMiddleware } from '@global/helpers/auth-middleware';
 import { postRoutes } from '@post/routes/postRoutes';
+import { answerRoutes } from '@answers/routes/answerRoutes';
 import { appealRoutes } from '@appeal/routes/appealRoutes';
 import { favpostRoutes } from '@favorite-posts/routes/fav-postRoutes';
 import { reactionRoutes } from '@reaction/routes/reactionRoutes';
@@ -41,6 +42,7 @@ export default (app: Application) => {
 
     app.use(BASE_PATH, authMiddleware.verifyUser, currentUserRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, appealRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, answerRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, postRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, favpostRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, reportpostRoutes.routes());

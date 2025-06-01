@@ -5,6 +5,7 @@ import { UserModel } from '@user/models/user.schema';
 import { Query, UpdateQuery } from 'mongoose';
 import { cache } from '@service/redis/cache';
 import { textServiceAI } from '@api-serverAI/text/text.AIservice';
+import mongoose from 'mongoose';
 
 const postCache = cache.postCache;
 const userbehaviorCache = cache.userBehaviorCache;
@@ -12,13 +13,144 @@ const userbehaviorCache = cache.userBehaviorCache;
 class PostService {
   public async addPostToDB(userId: string, createdPost: IPostDocument): Promise<void> {
     const post: Promise<IPostDocument> = PostModel.create(createdPost);
-    const user: UpdateQuery<IUserDocument> = UserModel.updateOne({ _id: userId }, { $inc: { postsCount: 1 } });
-    await Promise.all([post, user]);
+    if(createdPost.type !== 'answer') {
+      const user: UpdateQuery<IUserDocument> = UserModel.updateOne({ _id: userId }, { $inc: { postsCount: 1 } });
+      await Promise.all([post, user]);
+    }
+    else {
+      const postUpdate = await PostModel.findOneAndUpdate(
+        { _id: createdPost.questionId },
+        [
+          {
+            $set: {
+              answersCount: {
+                $cond: {
+                  if: { $ifNull: ["$answersCount", false] }, // Nếu field tồn tại
+                  then: { $add: ["$answersCount", 1] }, // Increment
+                  else: 1 // Set = 1 nếu field không tồn tại
+                }
+              }
+            }
+          }
+        ],
+        { new: true }
+      );
+      await postCache.updatePostPropertyInCache(createdPost.questionId as string, 'answersCount', postUpdate?.answersCount || 0);
+    }
   }
 
   public async getPostById(postId: string): Promise<IPostDocument | null> {
     const post: IPostDocument | null = await PostModel.findById(postId).exec();
     return post;
+  }
+
+  public async getAnswersForQuestion(questionId: string, skip: number = 0, limit: number = 10): Promise<IPostDocument[]> {
+    const answers = await PostModel.aggregate([
+      { 
+        $match: { 
+          questionId: new mongoose.Types.ObjectId(questionId),
+          type: 'answer'
+        } 
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'User',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          questionId: 1,
+          username: 1,
+          email: 1,
+          avatarColor: 1,
+          profilePicture: 1,
+          post: 1,
+          htmlPost: 1,
+          bgColor: 1,
+          feelings: 1,
+          privacy: 1,
+          gifUrl: 1,
+          commentsCount: 1,
+          imgVersion: 1,
+          imgId: 1,
+          videoId: 1,
+          videoVersion: 1,
+          createdAt: 1,
+          reactions: 1
+        }
+      }
+    ]);
+    
+    return answers;
+  }
+
+  public async getAnswerCount(questionId: string): Promise<number> {
+    const count: number = await PostModel.countDocuments({ questionId: new mongoose.Types.ObjectId(questionId), type: 'answer' });
+    return count;
+  }
+
+  public async getUserAnswers(userId: string, skip: number = 0, limit: number = 10): Promise<IPostDocument[]> {
+    const answers: IPostDocument[] = await PostModel.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          type: 'answer'
+        }
+      },
+      {
+        $lookup: {
+          from: 'Post',
+          localField: 'questionId',
+          foreignField: '_id',
+          as: 'questionContext'
+        }
+      },
+      {
+        $unwind: {
+          path: '$questionContext',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
+          from: 'User',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: '$user'
+      },
+      // {
+      //   $addFields: {
+      //     username: '$user.username',
+      //     uId: '$user.uId',
+      //     email: '$user.email',
+      //     avatarColor: '$user.avatarColor',
+      //     profilePicture: '$user.profilePicture'
+      //   }
+      // },
+      {
+        $project: {
+          user: 0 // Remove user object to avoid duplication
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit }
+    ]);
+
+    return answers;
   }
 
   public async getPosts(query: IGetPostsQuery, skip = 0, limit = 0, sort: Record<string, 1 | -1>): Promise<IPostDocument[]> {
@@ -32,6 +164,7 @@ class PostService {
     }
 
     postQuery.isHidden = { $ne: true };
+    postQuery.type = { $ne: 'answer' }; // Loại trừ các bài viết là câu trả lời
 
     // Xử lý lọc theo ngày
     if (query.startDate || query.endDate) {

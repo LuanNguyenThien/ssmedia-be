@@ -11,6 +11,7 @@ export interface INotificationDocument extends Document {
   comment: string;
   reaction: string;
   post_analysis?: string;
+  answer?: string;
   post: string;
   htmlPost?: string;
   imgId: string;
@@ -32,6 +33,7 @@ export interface INotification {
   comment: string;
   reaction: string;
   post_analysis: string;
+  answer?: string;
   post: string;
   htmlPost?: string;
   imgId: string;

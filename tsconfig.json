@@ -24,6 +24,7 @@
       "@auth/*": ["src/features/auth/*"],
       "@user/*": ["src/features/user/*"],
       "@post/*": ["src/features/post/*"],
+      "@answers/*": ["src/features/answers/*"],
       "@favorite-posts/*": ["src/features/favorite-posts/*"],
       "@report-posts/*": ["src/features/report-posts/*"],
       "@report-profiles/*": ["src/features/report-profiles/*"],

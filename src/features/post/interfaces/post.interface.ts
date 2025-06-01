@@ -49,7 +49,9 @@ export interface IPostDocument extends Document {
   isHidden?: Boolean;
   hiddenReason?: string;
   hiddenAt?: Date;
-  type?: string; // 'post', 'question', 'answer'
+  type?: string; // 'post', 'question', 'answer',
+  questionId?: string | mongoose.Types.ObjectId; // For answers
+  answersCount?: number; // For questions
 }
 
 export interface IPostJobAnalysis {

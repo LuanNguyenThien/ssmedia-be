@@ -54,6 +54,23 @@ export class Get {
     res.status(HTTP_STATUS.OK).json({ message: 'Get user profile', user: existingUser });
   }
 
+  // Thêm method mới vào class Get
+  public async getUserAnswers(req: Request, res: Response): Promise<void> {
+    const { userId, username, uId } = req.params;
+    console.log('getUserAnswers', userId, username, uId);
+    const { page = '1' } = req.query;
+    const userName: string = Helpers.firstLetterUppercase(username);
+    const skip: number = (parseInt(page as string) - 1) * 10;
+
+    const userAnswers: IPostDocument[] = await postService.getUserAnswers(userId, skip, 10);
+
+    res.status(HTTP_STATUS.OK).json({ 
+      message: 'Get user answers successfully', 
+      answers: userAnswers,
+      totalAnswers: userAnswers.length 
+    });
+  }
+
   public async profileByUserId(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
     // const cachedUser: IUserDocument = (await userCache.getUserFromCache(userId)) as IUserDocument;
