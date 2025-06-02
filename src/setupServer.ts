@@ -51,7 +51,7 @@ export class ChattyServer {
         maxAge: 24 * 7 * 3600000,
         secure: config.NODE_ENV !== 'development',
         sameSite: 'none', // comment this line when running the server locally
-        domain: '.younghub.online'
+        domain: '.brainet.online'
       })
     );
     app.use(hpp());

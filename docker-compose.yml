@@ -11,7 +11,7 @@ services:
       - REDIS_HOST_Queue=redis://redis-queue:6379
     depends_on:
       - redis-queue
-    restart: always
+    restart: unless-stopped
     networks:
       - backend-network
 
@@ -23,7 +23,7 @@ services:
       - "8000:8000"
     env_file:
       - ./ai-server/.env
-    restart: always
+    restart: unless-stopped
     networks:
       - backend-network
 
