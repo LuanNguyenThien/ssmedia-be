@@ -11,6 +11,9 @@ services:
       - REDIS_HOST_Queue=redis://redis-queue:6379
     depends_on:
       - redis-queue
+    restart: always
+    networks:
+      - backend-network
 
   ai-server:
     build:
@@ -20,6 +23,9 @@ services:
       - "8000:8000"
     env_file:
       - ./ai-server/.env
+    restart: always
+    networks:
+      - backend-network
 
   redis-queue:
     image: redis:latest
@@ -30,6 +36,12 @@ services:
     command: redis-server --appendonly yes
     container_name: redis-queue
     restart: always
+    networks:
+      - backend-network
 
 volumes:
   redis_queue_data:
+
+networks:
+  backend-network:
+    driver: bridge
