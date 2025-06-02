@@ -13,6 +13,7 @@ const notificationSchema: Schema = new Schema({
   comment: { type: String, default: '' },
   reaction: { type: String, default: '' },
   post_analysis: { type: String, default: '' },
+  answer: { type: String, default: '' },
   post: { type: String, default: '' },
   htmlPost: { type: String, default: '' },
   imgId: { type: String, default: '' },
@@ -37,7 +38,8 @@ notificationSchema.methods.insertNotification = async function (body: INotificat
     htmlPost,
     imgId,
     imgVersion,
-    gifUrl
+    gifUrl,
+    answer
   } = body;
 
   await NotificationModel.create({
@@ -55,7 +57,8 @@ notificationSchema.methods.insertNotification = async function (body: INotificat
     htmlPost: htmlPost || null,
     imgId,
     imgVersion,
-    gifUrl
+    gifUrl,
+    answer
   });
   try {
     const notifications: INotificationDocument[] = await notificationService.getNotifications(userTo);

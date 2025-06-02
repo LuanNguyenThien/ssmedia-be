@@ -26,6 +26,7 @@ class NotificationService {
           htmlPost: 1,
           reaction: 1,
           post_analysis: 1,
+          answer: 1,
           read: 1,
           userTo: 1,
           userFrom: {

@@ -21,6 +21,7 @@ class UserRoutes {
     this.router.get('/user/profile/posts/:username/:userId/:uId', authMiddleware.checkAuthentication, Get.prototype.profileAndPosts);
     this.router.get('/user/profile/user/suggestions', authMiddleware.checkAuthentication, Get.prototype.randomUserSuggestions);
     this.router.get('/user/profile/search/:query', authMiddleware.checkAuthentication, Search.prototype.user);
+    this.router.get('/user/profile/answers/:userId/:username/:uId', authMiddleware.checkAuthentication, Get.prototype.getUserAnswers);
 
     this.router.put('/user/profile/change-password', authMiddleware.checkAuthentication, Update.prototype.password);
     this.router.put('/user/profile/basic-info', authMiddleware.checkAuthentication, Edit.prototype.info);

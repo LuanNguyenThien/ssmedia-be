@@ -60,10 +60,21 @@ const postSchema: Schema = new Schema({
   type: {
     type: String,
     enum: ['post', 'question', 'answer'],
-    default: 'post'
-  }
+  },
+  questionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post',
+    default: null
+  },
+  answersCount: {
+    type: Number, default: 0
+  },
 });
 
+postSchema.index({questionId: 1, type: 1}, {
+  partialFilterExpression: { type: 'answer' }
+});
+postSchema.index({questionId: 1, createdAt: -1});
 const PostModel: Model<IPostDocument> = model<IPostDocument>('Post', postSchema, 'Post');
 
 export { PostModel };

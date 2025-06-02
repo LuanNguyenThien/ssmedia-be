@@ -22,8 +22,16 @@ export class PostCache extends BaseCache {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-      const redisKey = `user:${key}:posts`;
-      await this.client.del(redisKey);
+      
+      const postsKey = `user:${key}:posts`;
+      const questionsKey = `user:${key}:questions`;
+      
+      // Xóa cả hai cache cùng lúc bằng multi
+      const multi = this.client.multi();
+      multi.del(postsKey);
+      multi.del(questionsKey);
+      await multi.exec();
+      
     } catch (error) {
       log.error("Lỗi khi xóa cache", error, key);
       throw new ServerError('Server error. Try again.');
@@ -337,12 +345,16 @@ export class PostCache extends BaseCache {
         await this.client.connect();
       }
 
-      const postCount: string[] = await this.client.HMGET(`users:${currentUserId}`, 'postsCount');
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();
-      await this.client.ZADD('post', { score: parseInt(uId, 10), value: `${key}` });
       for (const [itemKey, itemValue] of Object.entries(dataToSave)) {
         multi.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);
       }
+      if(type === 'answer') {
+        multi.exec();
+        return;
+      }
+      await this.client.ZADD('post', { score: parseInt(uId, 10), value: `${key}` });
+      const postCount: string[] = await this.client.HMGET(`users:${currentUserId}`, 'postsCount');
       const count: number = parseInt(postCount[0], 10) + 1;
       multi.HSET(`users:${currentUserId}`, 'postsCount', count);
       multi.exec();
