@@ -9,3 +9,4 @@ scikit-learn
 python-dotenv
 opencv-python
 sentencepiece==0.1.99 
+requests

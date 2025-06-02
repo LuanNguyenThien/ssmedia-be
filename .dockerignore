@@ -21,6 +21,7 @@ build
 coverage
 *.test.js
 *.spec.js
+endpoints
 
 # IDE specific
 .vscode
@@ -40,3 +41,9 @@ terraform/                 # If you have Terraform configs
 .terraform/
 *.tfstate
 *.tfstate.*
+scripts
+
+#other files
+downloaded-base64.txt
+test.js
+src/fixdata.js

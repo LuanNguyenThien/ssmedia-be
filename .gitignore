@@ -153,5 +153,12 @@ build
 ai-server/run.py
 ai-server/server-ai.py
 ai-server/app.py
+ai-server/test.jpg
+ai-server/test.py
+
+#other files
+downloaded-base64.txt
+test.js
+src/fixdata.js
 
 # End of https://www.toptal.com/developers/gitignore/api/node
