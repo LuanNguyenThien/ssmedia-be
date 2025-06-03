@@ -19,6 +19,8 @@ build
 
 # Testing
 coverage
+*.mock.ts
+*.test.ts
 *.test.js
 *.spec.js
 endpoints

@@ -19,6 +19,7 @@
     "allowSyntheticDefaultImports": true,
     "pretty": true,
     "resolveJsonModule": true,
+    "skipLibCheck": true,
     "plugins": [{ "transform": "typescript-transform-paths" }, { "transform": "typescript-transform-paths", "afterDeclarations": true }],
     "paths": {
       "@auth/*": ["src/features/auth/*"],
@@ -51,5 +52,13 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.mock.ts",
+    "**/*.spec.ts",
+    "**/test/**"
   ]
 }
