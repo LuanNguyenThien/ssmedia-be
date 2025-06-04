@@ -315,6 +315,7 @@ export class PostCache extends BaseCache {
       reactions,
       createdAt,
       type,
+      groupId
     } = createdPost;
 
     const dataToSave = {
@@ -338,6 +339,7 @@ export class PostCache extends BaseCache {
       'videoVersion': `${videoVersion}`,
       'createdAt': `${createdAt}`,
       'type': `${type}`,
+      'groupId': `${groupId || ''}`,
     };
 
     try {

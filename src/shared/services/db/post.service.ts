@@ -13,11 +13,10 @@ const userbehaviorCache = cache.userBehaviorCache;
 class PostService {
   public async addPostToDB(userId: string, createdPost: IPostDocument): Promise<void> {
     const post: Promise<IPostDocument> = PostModel.create(createdPost);
-    if(createdPost.type !== 'answer') {
+    if (createdPost.type !== 'answer') {
       const user: UpdateQuery<IUserDocument> = UserModel.updateOne({ _id: userId }, { $inc: { postsCount: 1 } });
       await Promise.all([post, user]);
-    }
-    else {
+    } else {
       const postUpdate = await PostModel.findOneAndUpdate(
         { _id: createdPost.questionId },
         [
@@ -25,8 +24,8 @@ class PostService {
             $set: {
               answersCount: {
                 $cond: {
-                  if: { $ifNull: ["$answersCount", false] }, // Nếu field tồn tại
-                  then: { $add: ["$answersCount", 1] }, // Increment
+                  if: { $ifNull: ['$answersCount', false] }, // Nếu field tồn tại
+                  then: { $add: ['$answersCount', 1] }, // Increment
                   else: 1 // Set = 1 nếu field không tồn tại
                 }
               }
@@ -46,11 +45,11 @@ class PostService {
 
   public async getAnswersForQuestion(questionId: string, skip: number = 0, limit: number = 10): Promise<IPostDocument[]> {
     const answers = await PostModel.aggregate([
-      { 
-        $match: { 
+      {
+        $match: {
           questionId: new mongoose.Types.ObjectId(questionId),
           type: 'answer'
-        } 
+        }
       },
       { $sort: { createdAt: -1 } },
       { $skip: skip },
@@ -89,7 +88,7 @@ class PostService {
         }
       }
     ]);
-    
+
     return answers;
   }
 
@@ -215,35 +214,31 @@ class PostService {
     await Promise.all([updatePost]);
   }
 
-   public async getPostsforUserByVector(userId: string, mongoSkip: number, mongoLimit: number): Promise<IPostDocument[]> {
+  public async getPostsforUserByVector(userId: string, mongoSkip: number, mongoLimit: number): Promise<IPostDocument[]> {
     const user: IUserDocument | null = await UserModel.findById(userId);
     if (!user) {
       return [];
     } else {
       let userVector: number[] = user.user_vector as number[];
       if (user?.personalizeSettings?.allowPersonalize !== false) {
-        const userHobbies: string = user.user_hobbies?.personal + ' ' + user.user_hobbies?.subject as string;
+        const userHobbies: string = (user.user_hobbies?.personal + ' ' + user.user_hobbies?.subject) as string;
         console.log(userVector);
         const userInterest: string[] = await userbehaviorCache.getUserInterests(userId);
         console.log('User interests:', userInterest);
         if (userInterest.length > 0 || userVector.length === 0) {
           let combinedText = '';
-          if(user.quote || user.school || user.work || user.location) {
-            combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location|| ''}`;
+          if (user.quote || user.school || user.work || user.location) {
+            combinedText = `${user.quote || ''}. ${user.school || ''}. ${user.work || ''}. ${user.location || ''}`;
           }
           let response;
           if (userHobbies && userHobbies.trim().length > 0) {
             response = await textServiceAI.vectorizeText({ query: combinedText, userInterest, userHobbies });
-          }
-          else {
+          } else {
             if (combinedText.trim().length === 0 && userInterest.length === 0) {
               return await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
             }
             response = await textServiceAI.vectorizeText({ query: combinedText, userInterest });
-            await UserModel.updateOne(
-              { _id: userId },
-              { $set: { user_hobbies: { personal: response.related_topics } } }
-            );
+            await UserModel.updateOne({ _id: userId }, { $set: { user_hobbies: { personal: response.related_topics } } });
           }
           const updatedUserVector: number[] = response.vector;
           await UserModel.updateOne({ _id: userId }, { $set: { user_vector: updatedUserVector } });
@@ -253,7 +248,6 @@ class PostService {
       if (!userVector || userVector.length === 0) {
         const posts = await postCache.getTrendingPosts(mongoSkip, mongoSkip + mongoLimit - 1);
         return posts;
-
       }
       const posts = await this.searchPostsByVector(userVector, mongoSkip, mongoLimit, userId);
       return posts;
@@ -302,8 +296,8 @@ class PostService {
           index: 'vectorPost_index',
           path: 'post_embedding',
           queryVector: queryVector,
-          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit*5 : 200,
-          limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit*1.5 : 10,
+          numCandidates: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit * 5 : 200,
+          limit: mongoSkip !== undefined && mongoLimit !== undefined ? allCachedPosts.length + mongoLimit * 1.5 : 10,
           filter: {
             privacy: { $ne: 'Private' },
             isHidden: { $ne: true },
@@ -377,6 +371,21 @@ class PostService {
     if (result.matchedCount === 0) {
       throw new Error('Post not found or already visible');
     }
+  }
+
+  public async getPostsByGroupOnly(
+    groupId: string,
+    page: number,
+    limit: number
+  ): Promise<{ posts: IPostDocument[]; totalPosts: number }> {
+    const skip = (page - 1) * limit;
+    const query = { groupId };
+
+    const posts = await PostModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+
+    const totalPosts = await PostModel.countDocuments(query);
+
+    return { posts, totalPosts };
   }
 }
 

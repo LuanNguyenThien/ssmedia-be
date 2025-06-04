@@ -47,7 +47,7 @@ export class Create {
       videoVersion: '',
       createdAt: new Date(),
       reactions: { upvote: 0, downvote: 0 },
-      type: type || htmlPost ? 'post' : 'question',
+      type: type || htmlPost ? 'post' : 'question'
     } as IPostDocument;
 
     const analyzePost = {
@@ -67,7 +67,74 @@ export class Create {
       videoVersion: '',
       userId: req.currentUser!.userId,
       createdAt: new Date(),
-      type: type || htmlPost ? 'post' : 'question',  
+      type: type || htmlPost ? 'post' : 'question'
+    } as IPostJobAnalysis;
+
+    socketIOPostObject.emit('add post', createdPost);
+    await postCache.savePostToCache({
+      key: postObjectId,
+      currentUserId: `${req.currentUser!.userId}`,
+      uId: `${req.currentUser!.uId}`,
+      createdPost
+    });
+    postQueue.addPostJob('addPostToDB', { key: req.currentUser!.userId, value: createdPost });
+    postQueue.addPostJob('analyzePostContent', { value: analyzePost });
+    res.status(HTTP_STATUS.CREATED).json({ message: 'Post created successfully' });
+  }
+
+  @joiValidation(postSchema)
+  public async grouppost(req: Request, res: Response): Promise<void> {
+    const { groupId } = req.params;
+    const { bgColor, privacy, gifUrl, profilePicture, feelings } = req.body;
+    let { post, htmlPost, type } = req.body;
+    const postObjectId: ObjectId = new ObjectId();
+    if (htmlPost === undefined) {
+      htmlPost = '';
+    } else if (post === undefined) {
+      post = '';
+    }
+    const createdPost: IPostDocument = {
+      _id: postObjectId,
+      userId: req.currentUser!.userId,
+      username: req.currentUser!.username,
+      email: req.currentUser!.email,
+      avatarColor: req.currentUser!.avatarColor,
+      profilePicture,
+      post,
+      htmlPost,
+      bgColor,
+      feelings,
+      privacy,
+      gifUrl,
+      commentsCount: 0,
+      imgVersion: '',
+      imgId: '',
+      videoId: '',
+      videoVersion: '',
+      createdAt: new Date(),
+      reactions: { upvote: 0, downvote: 0 },
+      type: type || htmlPost ? 'post' : 'question',
+      groupId: groupId || null
+    } as IPostDocument;
+
+    const analyzePost = {
+      _id: postObjectId,
+      post,
+      htmlPost,
+      privacy,
+      bgColor,
+      feelings,
+      gifUrl,
+      profilePicture,
+      commentsCount: 0,
+      reactions: { upvote: 0, downvote: 0 },
+      imgId: '',
+      imgVersion: '',
+      videoId: '',
+      videoVersion: '',
+      userId: req.currentUser!.userId,
+      createdAt: new Date(),
+      type: type || htmlPost ? 'post' : 'question'
     } as IPostJobAnalysis;
 
     socketIOPostObject.emit('add post', createdPost);
@@ -85,7 +152,7 @@ export class Create {
   @joiValidation(postWithImageSchema)
   public async postWithImage(req: Request, res: Response): Promise<void> {
     const { post, bgColor, privacy, gifUrl, profilePicture, feelings, image } = req.body;
-    const htmlPost = "";
+    const htmlPost = '';
     const result: UploadApiResponse = (await uploads(image)) as UploadApiResponse;
     if (!result?.public_id) {
       throw new BadRequestError(result.message);
@@ -114,7 +181,7 @@ export class Create {
       reactions: { upvote: 0, downvote: 0 },
       type: 'question'
     } as IPostDocument;
-    
+
     const analyzePost = {
       _id: postObjectId,
       post,
@@ -131,7 +198,7 @@ export class Create {
       videoId: '',
       videoVersion: '',
       userId: req.currentUser!.userId,
-      type: 'question',
+      type: 'question'
     } as IPostJobAnalysis;
 
     socketIOPostObject.emit('add post', createdPost);
@@ -154,7 +221,7 @@ export class Create {
   @joiValidation(postWithVideoSchema)
   public async postWithVideo(req: Request, res: Response): Promise<void> {
     const { post, bgColor, privacy, gifUrl, profilePicture, feelings, video } = req.body;
-    const htmlPost = "";
+    const htmlPost = '';
     const result: UploadApiResponse = (await videoUpload(video)) as UploadApiResponse;
     if (!result?.public_id) {
       throw new BadRequestError(result.message);
@@ -180,7 +247,7 @@ export class Create {
       videoVersion: result.version.toString(),
       createdAt: new Date(),
       reactions: { upvote: 0, downvote: 0 },
-      type: 'question',
+      type: 'question'
     } as IPostDocument;
     const analyzePost = {
       _id: postObjectId,
@@ -198,7 +265,7 @@ export class Create {
       videoId: result.public_id,
       videoVersion: result.version.toString(),
       userId: req.currentUser!.userId,
-      type: 'question',
+      type: 'question'
     } as IPostJobAnalysis;
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({
