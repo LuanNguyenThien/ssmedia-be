@@ -8,7 +8,14 @@ class GroupService {
     return group;
   }
   public async getGroupsByUserId(userId: string): Promise<IGroupDocument[]> {
-    const groups = await GroupModel.find({ 'members.userId': userId });
+    const groups = await GroupModel.find({
+      members: {
+        $elemMatch: {
+          userId: userId,
+          status: 'active'
+        }
+      }
+    });
     return groups;
   }
 

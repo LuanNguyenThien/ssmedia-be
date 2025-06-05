@@ -73,8 +73,11 @@ const postSchema: Schema = new Schema({
   groupId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Group',
-    default: null,
-    
+    default: null
+  },
+  status: {
+    type: String,
+    values: ['pending', 'accepted', 'declined']
   }
 });
 

@@ -114,7 +114,8 @@ export class Create {
       createdAt: new Date(),
       reactions: { upvote: 0, downvote: 0 },
       type: type || htmlPost ? 'post' : 'question',
-      groupId: groupId || null
+      groupId: groupId || null,
+      status: 'pending'
     } as IPostDocument;
 
     const analyzePost = {

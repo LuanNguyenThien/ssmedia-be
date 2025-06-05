@@ -309,7 +309,7 @@ export class GroupController {
     if (!isAdmin) {
       throw new BadRequestError('You do not have permission to view pending members');
     }
-
+    
     // Lọc ra các member có state = 'pending_admin'
     const pendingMembers = group.members.filter((member) => member.status === 'pending_admin');
 
