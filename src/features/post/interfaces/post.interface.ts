@@ -75,6 +75,7 @@ export interface IPostJobAnalysis {
 
 export interface IGetPostsQuery {
   _id?: ObjectId | string | { $in: string[] };
+  userId?: ObjectId | string;
   username?: string;
   imgId?: string;
   gifUrl?: string;

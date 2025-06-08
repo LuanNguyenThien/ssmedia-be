@@ -18,11 +18,25 @@ class AuthService {
     );
   }
 
+  // public async getUserByUsernameOrEmail(username: string, email: string): Promise<IAuthDocument> {
+  //   const query = {
+  //     $or: [{ username: Helpers.firstLetterUppercase(username) }, { email: Helpers.lowerCase(email) }]
+  //   };
+  //   const user: IAuthDocument = (await AuthModel.findOne(query).exec()) as IAuthDocument;
+  //   return user;
+  // }
+
   public async getUserByUsernameOrEmail(username: string, email: string): Promise<IAuthDocument> {
     const query = {
-      $or: [{ username: Helpers.firstLetterUppercase(username) }, { email: Helpers.lowerCase(email) }]
+      $or: [
+        { username: username },
+        { email: email }
+      ]
     };
-    const user: IAuthDocument = (await AuthModel.findOne(query).exec()) as IAuthDocument;
+    
+    const user: IAuthDocument = (await AuthModel.findOne(query)
+      .collation({ locale: 'en', strength: 2 })
+      .exec()) as IAuthDocument;
     return user;
   }
 
