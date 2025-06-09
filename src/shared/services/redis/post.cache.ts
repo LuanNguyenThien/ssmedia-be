@@ -315,7 +315,8 @@ export class PostCache extends BaseCache {
       reactions,
       createdAt,
       type,
-      groupId
+      groupId,
+      status,
     } = createdPost;
 
     const dataToSave = {
@@ -340,6 +341,7 @@ export class PostCache extends BaseCache {
       'createdAt': `${createdAt}`,
       'type': `${type}`,
       'groupId': `${groupId || ''}`,
+      'status': `${status}`,
     };
 
     try {
@@ -666,6 +668,7 @@ export class PostCache extends BaseCache {
       hiddenReason,
       hiddenAt,
       type,
+      status
     } = updatedPost;
     const dataToSave = {
       'htmlPost': `${htmlPost}`,
@@ -683,8 +686,9 @@ export class PostCache extends BaseCache {
       'hiddenReason': `${hiddenReason}`,
       'hiddenAt': hiddenAt ? new Date(hiddenAt).toISOString() : '',
       'type': `${type}`,
+      'status': `${status}`
     };
-
+    console.log('dataToSave', dataToSave);
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
@@ -692,6 +696,7 @@ export class PostCache extends BaseCache {
       for (const [itemKey, itemValue] of Object.entries(dataToSave)) {
         console.log(itemKey, itemValue);
         if(itemValue != 'undefined') {
+          console.log(`posts:${key}`, `${itemKey}`, `${itemValue}`);
         await this.client.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);}
       }
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();

@@ -355,6 +355,27 @@ class PostService {
     );
     return post;
   }
+  public async acceptPost(postId: string): Promise<IPostDocument | null> {
+    const post = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        status: 'accepted'
+      },
+      { new: true }
+    );
+    return post;
+  }
+
+  public async declinePost(postId: string): Promise<IPostDocument | null> {
+    const post = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        status: 'declined'
+      },
+      { new: true }
+    );
+    return post;
+  }
 
   public async getHiddenPosts(skip = 0, limit = 10): Promise<IPostDocument[]> {
     const posts = await PostModel.find({ isHidden: true })
@@ -373,13 +394,47 @@ class PostService {
     }
   }
 
-  public async getPostsByGroupOnly(
+  public async getPostsByGroupOnly(groupId: string, page: number, limit: number): Promise<{ posts: IPostDocument[]; totalPosts: number }> {
+    const skip = (page - 1) * limit;
+    const query = { groupId };
+
+    const posts = await PostModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+
+    const totalPosts = await PostModel.countDocuments(query);
+
+    return { posts, totalPosts };
+  }
+
+  public async getPostsAcceptByGroup(
     groupId: string,
     page: number,
     limit: number
   ): Promise<{ posts: IPostDocument[]; totalPosts: number }> {
     const skip = (page - 1) * limit;
-    const query = { groupId };
+
+    const query = {
+      groupId,
+      status: 'accepted' // Chỉ lấy những post có status là "accept"
+    };
+
+    const posts = await PostModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+
+    const totalPosts = await PostModel.countDocuments(query);
+
+    return { posts, totalPosts };
+  }
+
+  public async getPostsPendingByGroup(
+    groupId: string,
+    page: number,
+    limit: number
+  ): Promise<{ posts: IPostDocument[]; totalPosts: number }> {
+    const skip = (page - 1) * limit;
+
+    const query = {
+      groupId,
+      status: 'pending' // Chỉ lấy những post có status là "accept"
+    };
 
     const posts = await PostModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
 

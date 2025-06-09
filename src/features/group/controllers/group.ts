@@ -11,7 +11,12 @@ import { UploadApiResponse } from 'cloudinary';
 import { uploads } from '@global/helpers/cloudinary-upload';
 import { userService } from '@service/db/user.service';
 import { postService } from '@service/db/post.service';
+import { socketIOPostObject } from '@socket/post';
+import { IPostDocument } from '@post/interfaces/post.interface';
+
+import { PostModel } from '@post/models/post.schema';
 const userCache = cache.userCache;
+const postCache = cache.postCache;
 export class GroupController {
   @joiValidation(createGroupSchema)
   public async create(req: Request, res: Response): Promise<void> {
@@ -104,7 +109,7 @@ export class GroupController {
   public async updateGroupInfo(req: Request, res: Response): Promise<void> {
     try {
       const { groupId } = req.params;
-      const { name, description, groupPicture } = req.body;
+      const { name, description, profileImage, privacy } = req.body;
 
       // Lấy group từ DB
       const group = await groupService.getGroupById(groupId);
@@ -126,8 +131,8 @@ export class GroupController {
 
       // Xử lý upload ảnh nếu có
       let updatedProfileImage = group.profileImage || '';
-      if (groupPicture) {
-        const result: UploadApiResponse = (await uploads(groupPicture)) as UploadApiResponse;
+      if (profileImage) {
+        const result: UploadApiResponse = (await uploads(profileImage)) as UploadApiResponse;
         if (!result?.public_id) {
           throw new BadRequestError(result.message || 'Image upload failed');
         }
@@ -138,7 +143,8 @@ export class GroupController {
       const updateData: Partial<IGroupDocument> = {
         name: name ?? group.name,
         description: description ?? group.description,
-        profileImage: updatedProfileImage
+        profileImage: updatedProfileImage,
+        privacy: privacy ?? group.privacy
       };
 
       // Cập nhật trong DB
@@ -309,7 +315,7 @@ export class GroupController {
     if (!isAdmin) {
       throw new BadRequestError('You do not have permission to view pending members');
     }
-    
+
     // Lọc ra các member có state = 'pending_admin'
     const pendingMembers = group.members.filter((member) => member.status === 'pending_admin');
 
@@ -535,7 +541,7 @@ export class GroupController {
         }
       }
 
-      const { posts, totalPosts } = await postService.getPostsByGroupOnly(groupId, page, limit);
+      const { posts, totalPosts } = await postService.getPostsAcceptByGroup(groupId, page, limit);
 
       res.status(HTTP_STATUS.OK).json({
         message: 'Group posts fetched successfully',
@@ -548,6 +554,95 @@ export class GroupController {
         message: 'Error fetching group posts',
         error: (error as Error).message
       });
+    }
+  }
+
+  public async getGroupPostsPending(req: Request, res: Response): Promise<void> {
+    try {
+      const PAGE_SIZE = 10; // Số lượng bài viết mỗi trang
+      const { groupId } = req.params;
+      const page = parseInt(req.params.page || '1');
+      const userId = req.currentUser!.userId;
+      const limit = PAGE_SIZE;
+      const skip = (page - 1) * limit;
+
+      const group = await groupService.getGroupById(groupId);
+      if (!group) {
+        throw new BadRequestError('Group not found');
+      }
+
+      if (group.privacy === 'private') {
+        const isMember = group.members.some((m) => m.userId.toString() === userId && m.status === 'active');
+        if (!isMember) {
+          throw new BadRequestError('Access denied to this private group');
+        }
+      }
+
+      const { posts, totalPosts } = await postService.getPostsPendingByGroup(groupId, page, limit);
+
+      res.status(HTTP_STATUS.OK).json({
+        message: 'Group posts fetched successfully',
+        posts,
+        totalPosts
+      });
+    } catch (error) {
+      console.error('Error fetching group posts:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: 'Error fetching group posts',
+        error: (error as Error).message
+      });
+    }
+  }
+
+  public async acceptPost(req: Request, res: Response): Promise<void> {
+    try {
+      const { postId } = req.params;
+      
+      const updatedPost: Partial<IPostDocument> = {
+        status: 'accepted'
+      };
+
+      // Update cache with type assertion
+      await postCache.updatePostInCache(postId, updatedPost as IPostDocument);
+      const postUpdated = await postService.acceptPost(postId);
+      console.log('Post accepted:', postUpdated);
+
+      if (!postUpdated) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Post not found' });
+        return;
+      }
+
+      socketIOPostObject.emit('accept post', { postId });
+      res.status(HTTP_STATUS.OK).json({ message: 'Post accepted successfully' });
+    } catch (error) {
+      console.error('Error accepting post:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Error accepting post' });
+    }
+  }
+
+  public async declinedPost(req: Request, res: Response): Promise<void> {
+    try {
+      const { postId } = req.params;
+
+      const updatedPost: Partial<IPostDocument> = {
+        status: 'declined'
+      };
+
+      // Update cache with type assertion
+      await postCache.updatePostInCache(postId, updatedPost as IPostDocument);
+      const postUpdated = await postService.declinePost(postId);
+      console.log('Post accepted:', postUpdated);
+
+      if (!postUpdated) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Post not found' });
+        return;
+      }
+
+      socketIOPostObject.emit('accept post', { postId });
+      res.status(HTTP_STATUS.OK).json({ message: 'Post accepted successfully' });
+    } catch (error) {
+      console.error('Error accepting post:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Error accepting post' });
     }
   }
 }
