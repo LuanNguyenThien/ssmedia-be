@@ -35,6 +35,9 @@ RUN chmod +x docker-entrypoint.sh
 # Build TypeScript code
 RUN npm run build
 
+# Copy email templates to build directory AFTER building
+RUN cp -r /app/src/shared/services/emails/templates/ /app/build/src/shared/services/emails/
+
 # Expose port
 EXPOSE 5000
 
