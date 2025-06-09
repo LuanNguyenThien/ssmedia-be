@@ -389,6 +389,10 @@ export class UserStatusCache extends BaseCache {
       socketIOChatObject.emit('chat list-notification', messageData);
       socketIOChatObject.emit('message received', messageData);
       socketIOChatObject.emit('chat list', messageData);
+
+      await messageCache.addChatListToCache(`${callerId}`, `${receiverId}`, `${conversationId}`, 'personal');
+      await messageCache.addChatListToCache(`${receiverId}`, `${callerId}`, `${conversationId}`, 'personal');
+
       await messageCache.addChatMessageToCache(conversationId, messageData);
       await chatService.addMessageToDB(messageData);
       // Lưu tin nhắn bằng MessageCache
