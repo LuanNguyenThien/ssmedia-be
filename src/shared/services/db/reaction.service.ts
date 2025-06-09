@@ -93,24 +93,24 @@ class ReactionService {
             console.error('Notification/socket error:', err);
           }
         })(),
-        (async () => {
-          try {
-            const templateParams: INotificationTemplate = {
-              username: userDoc.username!,
-              message: `${username} voted to your post.`,
-              header: 'Post Reaction Notification'
-            };
-            const template: string = notificationTemplate.notificationMessageTemplate(templateParams);
-            await emailQueue.addEmailJob('reactionsEmail', {
-              receiverEmail: userDoc.email!,
-              template,
-              subject: 'Post reaction notification'
-            });
-          } catch (err) {
-            // Log but do not throw to avoid blocking main flow
-            console.error('Email queue error:', err);
-          }
-        })()
+        // (async () => {
+        //   try {
+        //     const templateParams: INotificationTemplate = {
+        //       username: userDoc.username!,
+        //       message: `${username} voted to your post.`,
+        //       header: 'Post Reaction Notification'
+        //     };
+        //     const template: string = notificationTemplate.notificationMessageTemplate(templateParams);
+        //     await emailQueue.addEmailJob('reactionsEmail', {
+        //       receiverEmail: userDoc.email!,
+        //       template,
+        //       subject: 'Post reaction notification'
+        //     });
+        //   } catch (err) {
+        //     // Log but do not throw to avoid blocking main flow
+        //     console.error('Email queue error:', err);
+        //   }
+        // })()
       ]);
     } catch (err) {
       // Global error handler for DB/cache issues

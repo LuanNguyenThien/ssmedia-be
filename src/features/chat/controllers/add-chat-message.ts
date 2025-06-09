@@ -92,19 +92,19 @@ export class Add {
     };
     Add.prototype.emitSocketIOEvent(messageData);
 
-    if (!isRead) {
-      if (isGroupChat && group) {
-        await Add.prototype.groupMessageNotification(group, messageData);
-      } else {
-        Add.prototype.messageNotification({
-          currentUser: req.currentUser!,
-          message: body,
-          receiverName: receiverUsername,
-          receiverId,
-          messageData
-        });
-      }
-    }
+    // if (!isRead) {
+    //   if (isGroupChat && group) {
+    //     await Add.prototype.groupMessageNotification(group, messageData);
+    //   } else {
+    //     Add.prototype.messageNotification({
+    //       currentUser: req.currentUser!,
+    //       message: body,
+    //       receiverName: receiverUsername,
+    //       receiverId,
+    //       messageData
+    //     });
+    //   }
+    // }
 
     if(!isGroupChat) {
       await messageCache.addChatListToCache(`${req.currentUser!.userId}`, `${receiverId}`, `${conversationObjectId}`, 'personal');
