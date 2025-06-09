@@ -6,9 +6,19 @@ const SALT_ROUND = 10;
 
 const authSchema: Schema = new Schema(
   {
-    username: { type: String },
+    username: { type: String, unique: true,
+      index: {
+        unique: true,
+        collation: { locale: 'en', strength: 2 } // Case-insensitive index
+      }
+     },
     uId: { type: String },
-    email: { type: String },
+    email: { type: String, unique: true,
+      index: {
+        unique: true,
+        collation: { locale: 'en', strength: 2 } // Case-insensitive index
+      }
+    },
     password: { type: String },
     avatarColor: { type: String },
     role: {

@@ -52,6 +52,8 @@ export interface IPostDocument extends Document {
   type?: string; // 'post', 'question', 'answer',
   questionId?: string | mongoose.Types.ObjectId; // For answers
   answersCount?: number; // For questions
+  groupId?: string | mongoose.Types.ObjectId;
+  status ?: string; // 'active', 'deleted', 'archived'
 }
 
 export interface IPostJobAnalysis {
@@ -75,6 +77,7 @@ export interface IPostJobAnalysis {
 
 export interface IGetPostsQuery {
   _id?: ObjectId | string | { $in: string[] };
+  userId?: ObjectId | string;
   username?: string;
   imgId?: string;
   gifUrl?: string;

@@ -59,7 +59,7 @@ const postSchema: Schema = new Schema({
   },
   type: {
     type: String,
-    enum: ['post', 'question', 'answer'],
+    enum: ['post', 'question', 'answer']
   },
   questionId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -67,8 +67,18 @@ const postSchema: Schema = new Schema({
     default: null
   },
   answersCount: {
-    type: Number, default: 0
+    type: Number,
+    default: 0
   },
+  groupId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
+    default: null
+  },
+  status: {
+    type: String,
+    values: ['pending', 'accepted', 'declined']
+  }
 });
 
 postSchema.index({questionId: 1, type: 1}, {

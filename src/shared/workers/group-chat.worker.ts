@@ -4,7 +4,7 @@ import { config } from '@root/config';
 import { groupChatService } from '@service/db/group-chat.service';
 import { IGroupChat, IGroupChatJob, IGroupChatMember, IGroupChatMemberDocument } from '@root/features/group-chat/interfaces/group-chat.interface';
 import { imageService } from '@service/db/image.service';
-
+import { IGroupDocument } from '@root/features/group/interfaces/group.interface';
 const log: Logger = config.createLogger('group-chatWorker');
 
 class GroupChatWorker {
@@ -101,6 +101,10 @@ class GroupChatWorker {
     } catch (error) {
       console.log(error);
     }
+  }
+
+  public async saveGroup(group: IGroupDocument): Promise<IGroupDocument> {
+    return await group.save();
   }
 }
 
