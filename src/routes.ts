@@ -44,7 +44,6 @@ export default (app: Application) => {
     app.use(BASE_PATH, authMiddleware.verifyUser, currentUserRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, appealRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, answerRoutes.routes());
-    app.use(BASE_PATH, authMiddleware.verifyUser, postRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, favpostRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, reportpostRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, reportprofileRoutes.routes());
@@ -53,6 +52,7 @@ export default (app: Application) => {
     app.use(BASE_PATH, authMiddleware.verifyUser, followerRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, notificationRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, imageRoutes.routes());
+    app.use(BASE_PATH, authMiddleware.verifyUser, postRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, chatRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, groupChatRoutes.routes());
     app.use(BASE_PATH, authMiddleware.verifyUser, groupRoutes.routes());
