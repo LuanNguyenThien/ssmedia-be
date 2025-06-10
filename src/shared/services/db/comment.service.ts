@@ -66,13 +66,13 @@ class CommentService {
           post_analysis: ''
         });
         socketIONotificationObject.emit('insert notification', notifications, { userTo });
-        const templateParams: INotificationTemplate = {
-          username: user.username!,
-          message: `${username} commented on your post.`,
-          header: 'Comment Notification'
-        };
-        const template: string = notificationTemplate.notificationMessageTemplate(templateParams);
-        emailQueue.addEmailJob('commentsEmail', { receiverEmail: user.email!, template, subject: 'Post notification' });
+        // const templateParams: INotificationTemplate = {
+        //   username: user.username!,
+        //   message: `${username} commented on your post.`,
+        //   header: 'Comment Notification'
+        // };
+        // const template: string = notificationTemplate.notificationMessageTemplate(templateParams);
+        // emailQueue.addEmailJob('commentsEmail', { receiverEmail: user.email!, template, subject: 'Post notification' });
       }
     } catch (error) {
       console.error('Error in addCommentToDB:', error);

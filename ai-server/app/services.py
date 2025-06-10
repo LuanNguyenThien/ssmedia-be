@@ -2,13 +2,15 @@ import re, json, traceback
 from app.config import Config
 import google.generativeai as genai
 from .utils import blacklist_categories, is_meaningful_text, preprocess_text, combine_text, get_albert_embedding, get_improved_embedding, get_attention_weighted_embedding, store_vector_in_mongodb, collection, extract_related_topics_for_embedding
+from .api_key_manager import api_key_manager
 import base64
 import requests
 
-genai.configure(api_key=Config.API_KEY)
+# genai.configure(api_key=Config.API_KEY)
 
-async def clarify_text_for_vectorization(text, image=None):
+async def clarify_text_for_vectorization(text, image=None, api_key=None):
     try:
+        genai.configure(api_key=api_key)  # Cấu hình API key cho Gemini
         # Sử dụng Gemini để làm rõ ý nghĩa của văn bản
         model = genai.GenerativeModel('models/gemini-2.0-flash')
         prompt = f"""You are an assistant specializing in analyzing and extracting concise key topics or noun phrases for semantic search and vectorization. Your primary goal is to identify the core intent of the input text and extract relevant keywords or concepts, prioritizing domain-specific knowledge before any secondary aspects (e.g., study skills or strategies). The output must always be clean, concise, and in English, regardless of the input language.
@@ -135,8 +137,9 @@ async def translate_to_english(text):
         print(f"Error in Gemini analysis: {str(e)}")
         return None
 
-async def analyze_content_with_gemini(content, language, image_urls=None, video_urls=None, audio_urls=None):
+async def analyze_content_with_gemini(content, language, api_key, image_urls=None, video_urls=None, audio_urls=None):
     try:
+        genai.configure(api_key=api_key)  # Cấu hình API key cho Gemini
         model = genai.GenerativeModel('models/gemini-2.0-flash')
         # prompt = f"""Analyze the following content by english for a learning-focused social network:
 
@@ -359,9 +362,20 @@ async def analyze_content(content, id, image_urls=None, video_urls=None, audio_u
             video_urls = None
         if isinstance(audio_urls, list) and len(audio_urls) == 0:
             audio_urls = None
-            
+
+        # Get API key từ analysis pool
+        api_key, semaphore = await api_key_manager.get_analysis_key()
+
+        async with semaphore:
+            # Use rate-limited request
+            gemini_analysis = await api_key_manager.make_request_with_rate_limit(
+                api_key,
+                analyze_content_with_gemini,
+                content, "English", api_key, image_urls, video_urls, audio_urls
+            )
+
         # Phân tích với Gemini
-        gemini_analysis = await analyze_content_with_gemini(content, "English", image_urls, video_urls, audio_urls)
+        # gemini_analysis = await analyze_content_with_gemini(content, "English", image_urls, video_urls, audio_urls)
         cleaned_analysis_str = re.sub(r'```json|```', '', gemini_analysis).strip()
 
         cleaned_analysis = json.loads(cleaned_analysis_str)
@@ -411,7 +425,14 @@ async def vectorize_query(query, image=None, userInterest=None, userHobbies=None
                         image = None
         preprocessed_query = None
         if (query is not None and query != '' and userHobbies is None) or (image is not None):
-            query = await clarify_text_for_vectorization(query, image)
+            api_key, semaphore = await api_key_manager.get_search_key()
+            async with semaphore:
+                query = await api_key_manager.make_request_with_rate_limit(
+                    api_key,
+                    clarify_text_for_vectorization,
+                    query, image, api_key
+                )
+            # query = await clarify_text_for_vectorization(query, image)
             preprocessed_query = query
             if userInterest is not None:
                 preprocessed_query = f"{userInterest} {query}"
