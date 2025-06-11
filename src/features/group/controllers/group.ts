@@ -109,7 +109,7 @@ export class GroupController {
   public async updateGroupInfo(req: Request, res: Response): Promise<void> {
     try {
       const { groupId } = req.params;
-      const { name, description, profileImage, privacy } = req.body;
+      const { name, description, profileImage, privacy, tags, category } = req.body;
 
       // Lấy group từ DB
       const group = await groupService.getGroupById(groupId);
@@ -144,7 +144,9 @@ export class GroupController {
         name: name ?? group.name,
         description: description ?? group.description,
         profileImage: updatedProfileImage,
-        privacy: privacy ?? group.privacy
+        privacy: privacy ?? group.privacy,
+        tags: tags ?? group.tags,
+        category: category ?? group.category
       };
 
       // Cập nhật trong DB
@@ -185,6 +187,7 @@ export class GroupController {
     if (!currentUserMember) {
       throw new BadRequestError('Only group members can invite new members');
     }
+    const currentUserInfo = await userService.getUserById(currentUserId);
 
     for (const memberId of members) {
       if (!existingUserIds.has(memberId)) {
@@ -199,7 +202,13 @@ export class GroupController {
             status: 'pending_user',
             joinedBy: 'invited',
             joinedAt: new Date(),
-            invitedBy: currentUserId ? new ObjectId(currentUserId) : undefined
+            invitedBy: req.currentUser?.username ? new ObjectId(currentUserId) : undefined,
+            invitedInfo: {
+              username: currentUserInfo.username,
+              avatarColor: currentUserInfo.avatarColor,
+              profilePicture: currentUserInfo.profilePicture,
+              email: currentUserInfo.email
+            }
           });
         }
       }
@@ -481,8 +490,12 @@ export class GroupController {
     }
 
     const alreadyInGroup = group.members.some((m) => m.userId.toString() === userId);
+    const isRejected = group.members.some((m) => m.userId.toString() === userId && m.status === 'rejected');
     if (alreadyInGroup) {
-      throw new BadRequestError('You are already a member or have a pending request');
+      if (isRejected) {
+        throw new BadRequestError('You are not allowed to join this group');
+      }
+      throw new BadRequestError('You are already a member of this group');
     }
 
     const user = await userService.getUserById(userId);
@@ -597,7 +610,6 @@ export class GroupController {
   public async acceptPost(req: Request, res: Response): Promise<void> {
     try {
       const { postId } = req.params;
-      
       const updatedPost: Partial<IPostDocument> = {
         status: 'accepted'
       };
