@@ -597,7 +597,7 @@ export class GroupController {
   public async acceptPost(req: Request, res: Response): Promise<void> {
     try {
       const { postId } = req.params;
-      
+
       const updatedPost: Partial<IPostDocument> = {
         status: 'accepted'
       };
@@ -644,5 +644,15 @@ export class GroupController {
       console.error('Error accepting post:', error);
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Error accepting post' });
     }
+  }
+
+  public async getRandomGroups(req: Request, res: Response): Promise<void> {
+    const limit = parseInt(req.query.limit as string) || 10; // Default to 10 groups if no limit is provided
+    const groups = await groupService.getRandomGroups(limit);
+
+    res.status(HTTP_STATUS.OK).json({
+      message: 'Random groups retrieved successfully',
+      groups
+    });
   }
 }

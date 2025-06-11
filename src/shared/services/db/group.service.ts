@@ -19,6 +19,14 @@ class GroupService {
     return groups;
   }
 
+  public async getRandomGroups(limit: number): Promise<IGroupDocument[]> {
+    const groups = await GroupModel.aggregate([
+      { $sample: { size: limit } }
+    ]);
+    return groups;
+}
+
+
   public async getGroupById(groupId: string): Promise<IGroupDocument | null> {
     return GroupModel.findById(groupId);
   }
