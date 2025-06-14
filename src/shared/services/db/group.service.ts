@@ -157,17 +157,34 @@ class GroupService {
     await GroupModel.findByIdAndUpdate(groupId, { $push: { members: member } }, { new: true });
   }
 
+  // public async getGroupsUserNotJoined(userId: string): Promise<IGroupDocument[]> {
+  //   const objectId = new mongoose.Types.ObjectId(userId);
+
+  //   const groups = await GroupModel.find({
+  //     'members.userId': { $ne: objectId }
+  //   });
+
+  //   return groups;
+  // }
+
   public async getGroupsUserNotJoined(userId: string): Promise<IGroupDocument[]> {
     const objectId = new mongoose.Types.ObjectId(userId);
 
     const groups = await GroupModel.find({
-      'members.userId': { $ne: objectId } // loại trừ các group mà user đã là thành viên
+      $or: [
+        { 'members.userId': { $ne: objectId } }, // User is not in the members array
+        { members: { $elemMatch: { userId: objectId, status: { $ne: 'active' } } } } // User is in members but not active
+      ]
     });
 
     return groups;
   }
+
+  public async getRandomGroups(limit: number): Promise<IGroupDocument[]> {
+    const totalGroups = await GroupModel.countDocuments();
+    const groups = await GroupModel.aggregate([{ $sample: { size: totalGroups } }]);
+    return groups;
+  }
 }
-
-
 
 export const groupService: GroupService = new GroupService();
