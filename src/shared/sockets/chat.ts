@@ -36,14 +36,14 @@ export class SocketIOChatHandler {
           //   return;
           // }
           //Kiểm tra trạng thái người nhận cuộc gọi
-          const canReceiveCall = await cache.userStatusCache.canReceiveCall(receiverId, callerId);
-          console.log(canReceiveCall);
-          if (!canReceiveCall) {
-            this.io.to(senderSocketId).emit('call-busy', { 
-              userId: receiverId,
-              message: 'User is busy with another call'
-            });
-          }
+          // const canReceiveCall = await cache.userStatusCache.canReceiveCall(receiverId, callerId);
+          // console.log(canReceiveCall);
+          // if (!canReceiveCall) {
+          //   this.io.to(senderSocketId).emit('call-busy', { 
+          //     userId: receiverId,
+          //     message: 'User is busy with another call'
+          //   });
+          // }
           // Bắt đầu cuộc gọi trong cache
           const callStarted = await cache.userStatusCache.startCall(
             callerId,
@@ -58,6 +58,14 @@ export class SocketIOChatHandler {
             receiverAvatarColor,
             receiverAvatarSrc,
           );
+          if(!callStarted) {
+            this.io.to(senderSocketId).emit('call-busy', { 
+              userId: receiverId,
+              message: 'User is busy with another call'
+            });
+            return;
+          }
+
           if(callStarted) {
             if(receiverSocketId) {
               //Đặt trạng thái cuộc gọi cho người nhận

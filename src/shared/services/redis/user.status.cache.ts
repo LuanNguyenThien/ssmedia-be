@@ -68,7 +68,7 @@ export class UserStatusCache extends BaseCache {
       if (status === UserCallStatus.IDLE && callerId !== userId) {
         return true;
       }
-      if (status === UserCallStatus.BUSY || status === UserCallStatus.IN_CALL) {
+      if (status === UserCallStatus.BUSY) {
         const callInfo = await this.getUserCallInfo(userId);
         
         // Nếu có thông tin cuộc gọi và người gọi trùng với người đang gọi, cho phép cuộc gọi
@@ -100,29 +100,67 @@ export class UserStatusCache extends BaseCache {
     receiverAvatarColor?: string,
     receiverAvatarSrc?: string
   ): Promise<boolean> {
+    const callerLockKey = `lock:user:${callerId}`;
+    const receiverLockKey = `lock:user:${receiverId}`;
+    const lockValue = `${callerId}-${receiverId}-${callId}-${Date.now()}`;
+    
+    let callerLockAcquired = false;
+    let receiverLockAcquired = false;
     try {
+      const canReceiveFirst = await this.canReceiveCall(receiverId, callerId);
+      if (!canReceiveFirst) {
+        // Nếu không thể nhận cuộc gọi, kết thúc quá trình
+        await this.handleCallFailed(callId, conversationId, callerId, receiverId, callType, callerName, callerAvatarColor, callerAvatarSrc, receiverName, receiverAvatarColor, receiverAvatarSrc);
+        return false;
+      }
+
+      // Để tránh deadlock, luôn khóa theo thứ tự alphabet của userId
+      const [firstLockKey, secondLockKey] = callerId < receiverId 
+        ? [callerLockKey, receiverLockKey]
+        : [receiverLockKey, callerLockKey];
+      
+      // Thử lấy khóa đầu tiên
+      const firstLock = await this.client.set(firstLockKey, lockValue, {
+        NX: true, // Only set if key doesn't exist
+        EX: 10    // Expire after 10 seconds
+      });
+      
+      if (firstLock !== 'OK') {
+        console.log(`Failed to acquire first lock: ${firstLockKey}`);
+        await this.handleCallFailed(callId, conversationId, callerId, receiverId, callType, callerName, callerAvatarColor, callerAvatarSrc, receiverName, receiverAvatarColor, receiverAvatarSrc);
+        return false;
+      }
+      
+      // Đánh dấu lock đầu tiên đã được acquire
+      if (firstLockKey === callerLockKey) {
+        callerLockAcquired = true;
+      } else {
+        receiverLockAcquired = true;
+      }
+
+      // Thử lấy khóa thứ hai
+      const secondLock = await this.client.set(secondLockKey, lockValue, {
+        NX: true,
+        EX: 10
+      });
+      
+      if (secondLock !== 'OK') {
+        console.log(`Failed to acquire second lock: ${secondLockKey}`);
+        await this.handleCallFailed(callId, conversationId, callerId, receiverId, callType, callerName, callerAvatarColor, callerAvatarSrc, receiverName, receiverAvatarColor, receiverAvatarSrc);
+        return false;
+      }
+      
+      // Đánh dấu lock thứ hai đã được acquire
+      if (secondLockKey === callerLockKey) {
+        callerLockAcquired = true;
+      } else {
+        receiverLockAcquired = true;
+      }
+
       // Kiểm tra người nhận có thể nhận cuộc gọi không
       const canReceive = await this.canReceiveCall(receiverId, callerId);
       if (!canReceive) {
-        const callData = {
-          conversationId,
-          callId,
-          callerId,
-          receiverId,
-          callerName,
-          callerAvatarColor,
-          callerAvatarSrc,
-          receiverName,
-          receiverAvatarColor,
-          receiverAvatarSrc,
-          callType,
-          startTime: Date.now(),
-          endedAt: Date.now(), // Kết thúc ngay lập tức
-          status: CallStatus.MISSED, // Hoặc có thể sử dụng REJECTED tùy vào ngữ cảnh
-          endedBy: 'system'
-        };
-        await callHistoryCache.saveCall(callData);
-        await this.missedCall(callId);
+        await this.handleCallFailed(callId, conversationId, callerId, receiverId, callType, callerName, callerAvatarColor, callerAvatarSrc, receiverName, receiverAvatarColor, receiverAvatarSrc);
         return false;
       }
 
@@ -171,11 +209,89 @@ export class UserStatusCache extends BaseCache {
         startTime: Date.now(),
         status: CallStatus.INITIATED
       });
+
+      // Setup timeout để tự động release lock nếu cuộc gọi không được answer trong 45 giây
+      setTimeout(async () => {
+        await this.releaseBothLocks(callerId, receiverId, callId);
+      }, 45000);
       
       return true;
     } catch (error) {
       log.error(error);
+      await this.handleCallFailed(callId, conversationId, callerId, receiverId, callType, callerName, callerAvatarColor, callerAvatarSrc, receiverName, receiverAvatarColor, receiverAvatarSrc);
       return false;
+    } finally {
+      // Release locks sau 3 giây để đảm bảo cuộc gọi đã được setup
+      setTimeout(async () => {
+        await this.releaseBothLocks(callerId, receiverId, callId);
+      }, 3000);
+    }
+  }
+
+  /**
+   * Xử lý khi cuộc gọi thất bại và release locks
+   */
+  private async handleCallFailed(
+    callId: string,
+    conversationId: string,
+    callerId: string,
+    receiverId: string,
+    callType: 'audio' | 'video',
+    callerName?: string,
+    callerAvatarColor?: string,
+    callerAvatarSrc?: string,
+    receiverName?: string,
+    receiverAvatarColor?: string,
+    receiverAvatarSrc?: string
+  ): Promise<void> {
+    const callData = {
+      conversationId,
+      callId,
+      callerId,
+      receiverId,
+      callerName,
+      callerAvatarColor,
+      callerAvatarSrc,
+      receiverName,
+      receiverAvatarColor,
+      receiverAvatarSrc,
+      callType,
+      startTime: Date.now(),
+      endedAt: Date.now(),
+      status: CallStatus.MISSED,
+      endedBy: 'system'
+    };
+    
+    await callHistoryCache.saveCall(callData);
+    await this.missedCall(callId);
+    
+    // Release cả 2 locks
+    await this.releaseBothLocks(callerId, receiverId, callId);
+  }
+
+  /**
+   * Release cả 2 locks một cách an toàn
+   */
+  private async releaseBothLocks(callerId: string, receiverId: string, callId: string): Promise<void> {
+    try {
+      const callerLockKey = `lock:user:${callerId}`;
+      const receiverLockKey = `lock:user:${receiverId}`;
+      
+      // Check và release caller lock
+      const callerLock = await this.client.get(callerLockKey);
+      if (callerLock && callerLock.includes(callId)) {
+        await this.client.del(callerLockKey);
+        console.log(`Released caller lock for user: ${callerId}`);
+      }
+      
+      // Check và release receiver lock
+      const receiverLock = await this.client.get(receiverLockKey);
+      if (receiverLock && receiverLock.includes(callId)) {
+        await this.client.del(receiverLockKey);
+        console.log(`Released receiver lock for user: ${receiverId}`);
+      }
+    } catch (error) {
+      console.error('Error releasing both locks:', error);
     }
   }
 
@@ -189,7 +305,9 @@ export class UserStatusCache extends BaseCache {
         throw new Error('Call not found');
       }
       
-      const { receiverId } = call;
+      const { callerId, receiverId } = call;
+      // Release cả 2 locks khi cuộc gọi được chấp nhận
+      await this.releaseBothLocks(callerId, receiverId, callId);
       
       // Cập nhật trạng thái người nhận thành IN_CALL
       await this.client.set(`usercalls:${receiverId}:call_status`, UserCallStatus.IN_CALL);
@@ -212,6 +330,9 @@ export class UserStatusCache extends BaseCache {
       }
       
       const { callerId, receiverId } = call;
+
+      // Release cả 2 locks
+      await this.releaseBothLocks(callerId, receiverId, callId);
       
       // Reset trạng thái của cả hai người dùng
       await this.resetUserCallStatus(callerId);
@@ -264,6 +385,9 @@ export class UserStatusCache extends BaseCache {
       }
       
       const { callerId, receiverId, answeredAt } = call;
+
+      // Release cả 2 locks
+      await this.releaseBothLocks(callerId, receiverId, callId);
 
       if(!answeredAt) {
         // Nếu cuộc gọi chưa được trả lời, đánh dấu là cuộc gọi nhỡ
