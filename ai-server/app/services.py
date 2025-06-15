@@ -105,11 +105,11 @@ async def clarify_text_for_vectorization(text, image=None, api_key=None):
                 image_part,
                 prompt
             ]
-            response = model.generate_content(content_input)
+            response = await model.generate_content_async(content_input)
         else:
             # Nếu chỉ có text, sử dụng prompt thông thường
-            response = model.generate_content(prompt)
-        
+            response = await model.generate_content_async(prompt)
+
         if response.prompt_feedback.block_reason:
             print(f"Response blocked. Reason: {response.prompt_feedback.block_reason}")
             return None
@@ -304,7 +304,7 @@ async def analyze_content_with_gemini(content, language, api_key, image_urls=Non
             media_summary = f"Analyze the content include: {', '.join(media_description)} and text content."
             content_input.insert(0, media_summary)
         print(content_input + [prompt])
-        response = model.generate_content(content_input + [prompt])
+        response = await model.generate_content_async(content_input + [prompt])
         print("Gemini: ", response.text)
         
         if response.prompt_feedback.block_reason:
@@ -319,10 +319,10 @@ async def analyze_content_with_gemini(content, language, api_key, image_urls=Non
 
 async def analyze_content(content, id, image_urls=None, video_urls=None, audio_urls=None):
     try:
-        if not is_meaningful_text(content):
-            content_type = "Special Characters/Numbers"
-        else:
-            content_type = "Text"
+        # if not is_meaningful_text(content):
+        #     content_type = "Special Characters/Numbers"
+        # else:
+        #     content_type = "Text"
         
         # Phát hiện ngôn ngữ (chỉ cho nội dung văn bản)
         # try:
@@ -330,7 +330,7 @@ async def analyze_content(content, id, image_urls=None, video_urls=None, audio_u
         # except LangDetectException:
         #     language = "Unknown"
 
-        print(f"Content type: {content_type}")
+        # print(f"Content type: {content_type}")
         # print(f"Detected language: {language}")
 
         # Dịch sang tiếng Anh nếu cần
