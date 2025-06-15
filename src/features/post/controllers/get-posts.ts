@@ -4,10 +4,12 @@ import { IPostDocument } from '@post/interfaces/post.interface';
 // import { PostCache } from '@service/redis/post.cache';
 import { postService } from '@service/db/post.service';
 import { cache } from '@service/redis/cache';
+import { existingUser } from '@root/mocks/user.mock';
+import mongoose from 'mongoose';
 
 // const postCache: PostCache = new PostCache();
 const postCache = cache.postCache;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 const REDIS_BATCH_SIZE = 50;
 
 export class Get {
@@ -21,6 +23,18 @@ export class Get {
       }
     }
     return res.status(HTTP_STATUS.OK).json({ message: 'Post found', post });
+  }
+
+  public async postByUserIdPaginated(req: Request, res: Response): Promise<void> {
+    const { userId, page } = req.params;
+    const skip: number = (parseInt(page, 10) - 1) * PAGE_SIZE;
+    const limit: number = PAGE_SIZE * parseInt(page, 10);
+    const objectId = new mongoose.Types.ObjectId(userId);
+
+    console.log(userId, page);
+    const userPosts: IPostDocument[] = await postService.getPosts({ userId: objectId }, skip, limit, { createdAt: -1 });
+    console.log(userPosts);
+    res.status(HTTP_STATUS.OK).json({ message: 'User posts', posts: userPosts });
   }
 
   // public async posts(req: Request, res: Response): Promise<void> {
@@ -91,7 +105,7 @@ export class Get {
 
   public async posts(req: Request, res: Response): Promise<void> {
     try {
-      console.time('posts');  
+      console.time('posts');
       const { page } = req.params;
       const userId = req.currentUser!.userId;
       let skip: number = (parseInt(page) - 1) * PAGE_SIZE;
@@ -117,11 +131,17 @@ export class Get {
           posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
           totalPosts = redisCount;
         } else {
-          const formattedPosts = newPosts.map((post) => ({ _id: post._id as string, score: post.score as number, isQuestion: (post.htmlPost as string === '' || post.htmlPost === undefined) }));
+          const formattedPosts = newPosts.map((post) => ({
+            _id: post._id as string,
+            score: post.score as number,
+            isQuestion: (post.htmlPost as string) === '' || post.htmlPost === undefined
+          }));
           console.log(formattedPosts);
           await postCache.savePostsforUserToCache(redisKey, formattedPosts);
           await postCache.saveQuestionsForUserToCache(userId, formattedPosts);
-          if(redisCount === 0) { skip = 0; }
+          if (redisCount === 0) {
+            skip = 0;
+          }
 
           posts = await postCache.getPostsforUserFromCache(redisKey, skip, limit);
           totalPosts = await postService.postsCount();
@@ -152,8 +172,7 @@ export class Get {
       if (cachedQuestions.length === limit) {
         questions = cachedQuestions;
         totalQuestions = await postCache.getTotalQuestionsforUser(userId);
-      }
-      else {
+      } else {
         // Lấy thêm bài viết từ MongoDB
         const redisCount = await postCache.getTotalPostsforUser(redisKey);
         const mongoSkip = redisCount;
@@ -164,11 +183,17 @@ export class Get {
           questions = await postCache.getQuestionsForUserFromCache(userId, skip, limit);
           totalQuestions = await postCache.getTotalQuestionsforUser(userId);
         } else {
-          const formattedPosts = newPosts.map((post) => ({ _id: post._id as string, score: post.score as number, isQuestion: (post.htmlPost as string === '' || post.htmlPost === undefined) }));
+          const formattedPosts = newPosts.map((post) => ({
+            _id: post._id as string,
+            score: post.score as number,
+            isQuestion: (post.htmlPost as string) === '' || post.htmlPost === undefined
+          }));
           console.log(formattedPosts);
           await postCache.savePostsforUserToCache(redisKey, formattedPosts);
           await postCache.saveQuestionsForUserToCache(userId, formattedPosts);
-          if(redisCount === 0) { skip = 0; }
+          if (redisCount === 0) {
+            skip = 0;
+          }
 
           questions = await postCache.getQuestionsForUserFromCache(userId, skip, limit);
           totalQuestions = await postService.postsCount();
@@ -183,7 +208,6 @@ export class Get {
       });
     }
   }
-
 
   public async postsWithImages(req: Request, res: Response): Promise<void> {
     const { page } = req.params;

@@ -24,14 +24,15 @@ export class ReactionCache extends BaseCache {
       if (!this.client.isOpen) {
         await this.client.connect();
       }
-
       if (previousReaction) {
         this.removePostReactionFromCache(key, reaction.username, postReactions);
       }
 
       if (type) {
-        await this.client.LPUSH(`reactions:${key}`, JSON.stringify(reaction));
-        await this.client.HSET(`posts:${key}`, 'reactions', JSON.stringify(postReactions));
+        const multi = this.client.multi();
+        multi.LPUSH(`reactions:${key}`, JSON.stringify(reaction));
+        multi.HSET(`posts:${key}`, 'reactions', JSON.stringify(postReactions));
+        await multi.exec();
       }
     } catch (error) {
       log.error(error);
@@ -92,7 +93,6 @@ export class ReactionCache extends BaseCache {
       const result: IReactionDocument = find(list, (listItem: IReactionDocument) => {
         return listItem?.postId === postId && listItem?.username === username;
       }) as IReactionDocument;
-
       return result ? [result, 1] : [];
     } catch (error) {
       log.error(error);

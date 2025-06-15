@@ -14,7 +14,9 @@ class FollowerRoutes {
 
   public routes(): Router {
     this.router.get('/user/following', authMiddleware.checkAuthentication, Get.prototype.userFollowing);
+    this.router.get('/user/following/:page', authMiddleware.checkAuthentication, Get.prototype.userFollowingPaginated);
     this.router.get('/user/followers/:userId', authMiddleware.checkAuthentication, Get.prototype.userFollowers);
+    this.router.get('/user/followers/:userId/:page', authMiddleware.checkAuthentication, Get.prototype.userFollowersPaginated);
 
     this.router.put('/user/follow/:followerId', authMiddleware.checkAuthentication, Add.prototype.follower);
     this.router.put('/user/unfollow/:followeeId/:followerId', authMiddleware.checkAuthentication, Remove.prototype.follower);
