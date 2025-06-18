@@ -12,10 +12,10 @@ class ReportProfileService {
     return await ReportProfileModel.create(reportProfileData);
   }
 
-  public async getReportProfiles(skip: number, limit: number): Promise<any[]> {
+  public async getReportProfiles(skip: number, limit: number): Promise<{ results: any[]; total: number }> {
     // 1. Lấy reportProfiles phân trang
     const reportProfiles: IReportProfileDocument[] = await ReportProfileModel.find().skip(skip).limit(limit).exec();
-
+    const total = await ReportProfileModel.countDocuments();
     // 2. Dùng Promise.all để gọi song song lấy user info cho reporter và reportedUser
     const results = await Promise.all(
       reportProfiles.map(async (report) => {
@@ -30,7 +30,7 @@ class ReportProfileService {
       })
     );
 
-    return results;
+    return {results, total};
   }
 
   public async updateReportProfileStatus(

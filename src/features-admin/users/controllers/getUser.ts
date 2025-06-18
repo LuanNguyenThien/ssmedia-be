@@ -35,16 +35,26 @@ export class getUser {
     try {
       const { page } = req.params;
       const skip: number = (parseInt(page) - 1) * PAGE_SIZE;
-      const bannedUsers = await userBanService.getBannedUsers(req.currentUser!.userId, skip, PAGE_SIZE);
 
+      // Gọi service và destructure kết quả
+      const { results: bannedUsers, total } = await userBanService.getBannedUsers(req.currentUser!.userId, skip, PAGE_SIZE);
+
+      // Nếu không có user nào bị ban
       if (bannedUsers.length === 0) {
         res.status(HTTP_STATUS.OK).json({
           message: 'No banned users found',
-          data: []
+          data: [],
+          total: 0
         });
+        return; // Đừng quên return
       }
 
-      res.status(HTTP_STATUS.OK).json({ message: 'Banned users retrieved successfully', data: bannedUsers });
+      // Trả về danh sách và tổng số lượng
+      res.status(HTTP_STATUS.OK).json({
+        message: 'Banned users retrieved successfully',
+        data: bannedUsers,
+        total
+      });
     } catch (error) {
       console.error('Error fetching banned users:', error);
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to retrieve banned users' });
