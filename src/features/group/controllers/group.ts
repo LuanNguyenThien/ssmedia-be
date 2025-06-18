@@ -493,7 +493,30 @@ export class GroupController {
     const isRejected = group.members.some((m) => m.userId.toString() === userId && m.status === 'rejected');
     if (alreadyInGroup) {
       if (isRejected) {
-        throw new BadRequestError('You are not allowed to join this group');
+        // throw new BadRequestError('You are not allowed to join this group');
+        // const user = await userService.getUserById(userId);
+        // if (!user) {
+        //   // Thêm kiểm tra nếu không tìm thấy user
+        //   throw new BadRequestError('User not found');
+        // }
+
+        // const member: IGroupMember = {
+        //   userId: new ObjectId(userId),
+        //   username: user.username,
+        //   avatarColor: user.avatarColor || '#ffffff',
+        //   profilePicture: user.profilePicture || '',
+        //   role: 'member',
+        //   status: 'pending_admin',
+        //   joinedAt: new Date(),
+        //   joinedBy: 'self'
+        // };
+
+        await groupService.joinGroupAgain(groupId, userId);
+
+        res.status(HTTP_STATUS.OK).json({
+          message: 'Request to join group sent successfully'
+        });
+        return;
       }
       throw new BadRequestError('You are already a member of this group');
     }

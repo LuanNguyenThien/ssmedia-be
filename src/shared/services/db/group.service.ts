@@ -107,6 +107,25 @@ class GroupService {
     );
   }
 
+  public async joinGroupAgain(groupId: string, userId: string): Promise<void> {
+    const objectGroupId = new mongoose.Types.ObjectId(groupId);
+    const objectUserId = new mongoose.Types.ObjectId(userId);
+
+    await GroupModel.updateOne(
+      {
+        _id: objectGroupId,
+        'members.userId': objectUserId,
+        'members.status': 'rejected'
+      },
+      {
+        $set: {
+          'members.$.status': 'pending_admin',
+          'members.$.joinedAt': new Date()
+        }
+      }
+    );
+  }
+
   public async approveMemberByAdmin(groupId: string, userId: string): Promise<void> {
     await GroupModel.updateOne(
       {
