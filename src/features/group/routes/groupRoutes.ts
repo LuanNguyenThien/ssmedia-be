@@ -28,6 +28,7 @@ class GroupRoutes {
     this.router.post('/group/create', authMiddleware.checkAuthentication, group.create);
     this.router.get('/group/user-group/:userId', authMiddleware.checkAuthentication, group.getUserGroups);
     this.router.get('/group/:groupId/posts/:page', authMiddleware.checkAuthentication, group.getGroupPosts);
+    this.router.get('/group/allgroups', authMiddleware.checkAuthentication, group.getRandomGroups);
     this.router.get('/group/:groupId/postspending/:page', authMiddleware.checkAuthentication, group.getGroupPostsPending);
     this.router.get('/group/:groupId', authMiddleware.checkAuthentication, group.getGroup);
     this.router.put('/group/:groupId', authMiddleware.checkAuthentication, group.updateGroupInfo);

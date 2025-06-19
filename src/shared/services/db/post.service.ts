@@ -393,14 +393,10 @@ class PostService {
 
   public async getHiddenPosts(skip = 0, limit = 5): Promise<{ posts: IPostDocument[]; total: number }> {
     const [posts, total] = await Promise.all([
-      PostModel.find({ isHidden: true })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      PostModel.find({ isHidden: true }).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
       PostModel.countDocuments({ isHidden: true })
     ]);
-  
+
     return { posts, total };
   }
 
@@ -432,7 +428,9 @@ class PostService {
 
     const query = {
       groupId,
-      status: 'accepted' // Chỉ lấy những post có status là "accept"
+      status: 'accepted',
+      privacy: 'Public'
+      // Chỉ lấy những post có status là "accept"
     };
 
     const posts = await PostModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
