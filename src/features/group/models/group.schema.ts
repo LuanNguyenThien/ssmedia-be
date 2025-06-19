@@ -4,22 +4,22 @@ import { IGroupDocument, IGroupMember } from '@root/features/group/interfaces/gr
 const groupMemberSchema = new Schema<IGroupMember>(
   {
     userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-          required: [true, 'User ID is required']
-        },
-        username: {
-          type: String,
-          required: [true, 'Username is required']
-        },
-        avatarColor: {
-          type: String,
-          default: '#ffffff'
-        },
-        profilePicture: {
-          type: String,
-          default: ''
-        },
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'User ID is required']
+    },
+    username: {
+      type: String,
+      required: [true, 'Username is required']
+    },
+    avatarColor: {
+      type: String,
+      default: '#ffffff'
+    },
+    profilePicture: {
+      type: String,
+      default: ''
+    },
     joinedAt: {
       type: Date,
       default: Date.now
@@ -38,6 +38,15 @@ const groupMemberSchema = new Schema<IGroupMember>(
     invitedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
+    },
+    invitedInfo: {
+      type: Object,
+      default: {
+        username: '',
+        avatarColor: '',
+        profilePicture: '',
+        email: ''
+      }
     }
   },
   { _id: false }
@@ -63,7 +72,7 @@ const groupSchema: Schema<IGroupDocument> = new Schema(
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'Auth'
     },
     members: {
       type: [groupMemberSchema],
@@ -93,23 +102,20 @@ groupSchema.pre<IGroupDocument>('save', function (next) {
   if (this.isNew) {
     const creatorId = this.createdBy;
     if (creatorId) {
-      
       const creatorExists = this.members.some((member: IGroupMember) => member.userId && member.userId.toString() === creatorId.toString());
 
       if (!creatorExists) {
-       
         this.members.unshift({
-          userId: creatorId, 
-          username: '', 
-          avatarColor: '#ffffff', 
-          profilePicture: '', 
-          joinedAt: new Date(), 
+          userId: creatorId,
+          username: '',
+          avatarColor: '#ffffff',
+          profilePicture: '',
+          joinedAt: new Date(),
           role: 'admin',
           joinedBy: 'self',
           status: 'active'
         } as IGroupMember);
       } else {
-        
         const creatorMember = this.members.find(
           (member: IGroupMember) => member.userId && member.userId.toString() === creatorId.toString()
         );
@@ -117,7 +123,7 @@ groupSchema.pre<IGroupDocument>('save', function (next) {
           creatorMember.role = 'admin';
           creatorMember.status = 'active';
           creatorMember.joinedBy = 'self';
-          creatorMember.joinedAt = new Date(); 
+          creatorMember.joinedAt = new Date();
         }
       }
     }

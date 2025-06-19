@@ -15,6 +15,7 @@ export class Add {
   @joiValidation(addReactionSchema)
   public async reaction(req: Request, res: Response): Promise<void> {
     const { userTo, postId, type, previousReaction, postReactions, profilePicture } = req.body;
+    console.time('reaction');
     const reactionObject: IReactionDocument = {
       _id: new ObjectId(),
       postId,
@@ -35,7 +36,9 @@ export class Add {
       previousReaction,
       reactionObject
     };
+
     reactionQueue.addReactionJob('addReactionToDB', databaseReactionData);
+    console.timeEnd('reaction');
     res.status(HTTP_STATUS.OK).json({ message: 'Reaction added successfully' });
   }
 }

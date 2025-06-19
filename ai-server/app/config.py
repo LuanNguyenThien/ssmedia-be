@@ -42,7 +42,11 @@ class Config:
         os.getenv("API_KEY_27"),
         os.getenv("API_KEY_28"),
         os.getenv("API_KEY_29"),
-        os.getenv("API_KEY_30")
+        os.getenv("API_KEY_30"),
+        os.getenv("API_KEY_31"),
+        os.getenv("API_KEY_32"),
+        os.getenv("API_KEY_33"),
+        os.getenv("API_KEY_34")
     ]
     
     # Cấu hình ứng dụng

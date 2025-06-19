@@ -98,13 +98,13 @@ export class Get {
 
   public async randomUserSuggestions(req: Request, res: Response): Promise<void> {
     let randomUsers: IUserDocument[] = [];
-    const cachedUsers: IUserDocument[] = await userCache.getRandomUsersFromCache(`${req.currentUser!.userId}`, req.currentUser!.username);
-    if (cachedUsers.length) {
-      randomUsers = [...cachedUsers];
-    } else {
-      const users: IUserDocument[] = await userService.getRandomUsers(req.currentUser!.userId);
-      randomUsers = [...users];
-    }
+    // const cachedUsers: IUserDocument[] = await userCache.getRandomUsersFromCache(`${req.currentUser!.userId}`, req.currentUser!.username);
+    // if (cachedUsers.length) {
+    //   randomUsers = [...cachedUsers];
+    // } else {
+    // }
+    const users: IUserDocument[] = await userService.getRandomUsers(req.currentUser!.userId);
+    randomUsers = [...users];
     res.status(HTTP_STATUS.OK).json({ message: 'User suggestions', users: randomUsers });
   }
 

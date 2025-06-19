@@ -73,7 +73,11 @@ const postSchema: Schema = new Schema({
   groupId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Group',
-    default: null
+    // default: null
+  },
+  isGroupPost: {
+    type: Boolean,
+    default: false
   },
   status: {
     type: String,

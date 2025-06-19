@@ -5,7 +5,7 @@ import { cache } from '@service/redis/cache';
 import { IPostDocument } from '@post/interfaces/post.interface';
 
 const postCache = cache.postCache;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 export class Get {
   public async favoritePosts(req: Request, res: Response): Promise<void> {
@@ -18,9 +18,13 @@ export class Get {
       let favposts: IPostDocument[] = [];
 
       const cachedPosts: IPostDocument[] = await postCache.getFavoritePostsFromCache(userId);
+      
       if (cachedPosts.length) {
-        favposts = cachedPosts;
+        console.log('cachedPosts');
+        // Apply pagination to cached posts
+        favposts = cachedPosts.slice(skip, skip + limit);
       } else {
+        console.log('not cachedPosts');
         favposts = await favPostService.getFavoritePosts(userId, skip, limit);
       }
 

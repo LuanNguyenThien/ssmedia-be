@@ -12,7 +12,7 @@ import { uploads, videoUpload } from '@global/helpers/cloudinary-upload';
 import { BadRequestError } from '@global/helpers/error-handler';
 import { imageQueue } from '@service/queues/image.queue';
 import { cache } from '@service/redis/cache';
-
+import { groupService } from '@service/db/group.service';
 // const postCache: PostCache = new PostCache();
 const postCache = cache.postCache;
 
@@ -88,14 +88,29 @@ export class Create {
     const { bgColor, privacy, gifUrl, profilePicture, feelings } = req.body;
     let { post, htmlPost, type } = req.body;
     const postObjectId: ObjectId = new ObjectId();
-    if (htmlPost === undefined) {
-      htmlPost = '';
-    } else if (post === undefined) {
-      post = '';
+
+    if (htmlPost === undefined) htmlPost = '';
+    else if (post === undefined) post = '';
+
+    // Lấy group từ DB
+    const group = await groupService.getGroupById(groupId);
+    if (!group) {
+      throw new BadRequestError('Group not found');
     }
+
+    // Kiểm tra quyền admin
+    const currentUserId = req.currentUser?.userId;
+    if (!currentUserId) {
+      throw new BadRequestError('Unauthorized request');
+    }
+
+    const currentUserMember = group.members.find((member) => `${member.userId}` === `${currentUserId}`);
+    const isAdmin = currentUserMember && currentUserMember.role === 'admin';
+    const status = isAdmin ? 'accepted' : 'pending';
+
     const createdPost: IPostDocument = {
       _id: postObjectId,
-      userId: req.currentUser!.userId,
+      userId: currentUserId,
       username: req.currentUser!.username,
       email: req.currentUser!.email,
       avatarColor: req.currentUser!.avatarColor,
@@ -115,7 +130,7 @@ export class Create {
       reactions: { upvote: 0, downvote: 0 },
       type: type || htmlPost ? 'post' : 'question',
       groupId: groupId || null,
-      status: 'pending'
+      status
     } as IPostDocument;
 
     const analyzePost = {
@@ -133,7 +148,7 @@ export class Create {
       imgVersion: '',
       videoId: '',
       videoVersion: '',
-      userId: req.currentUser!.userId,
+      userId: currentUserId,
       createdAt: new Date(),
       type: type || htmlPost ? 'post' : 'question'
     } as IPostJobAnalysis;
@@ -141,11 +156,11 @@ export class Create {
     socketIOPostObject.emit('add post', createdPost);
     await postCache.savePostToCache({
       key: postObjectId,
-      currentUserId: `${req.currentUser!.userId}`,
+      currentUserId: `${currentUserId}`,
       uId: `${req.currentUser!.uId}`,
       createdPost
     });
-    postQueue.addPostJob('addPostToDB', { key: req.currentUser!.userId, value: createdPost });
+    postQueue.addPostJob('addPostToDB', { key: currentUserId, value: createdPost });
     postQueue.addPostJob('analyzePostContent', { value: analyzePost });
     res.status(HTTP_STATUS.CREATED).json({ message: 'Post created successfully' });
   }

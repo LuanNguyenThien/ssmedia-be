@@ -13,7 +13,9 @@ const postSchema: ObjectSchema = Joi.object().keys({
   image: Joi.string().optional().allow(null, ''),
   video: Joi.string().optional().allow(null, ''),
   videoVersion: Joi.string().optional().allow(null, ''),
-  videoId: Joi.string().optional().allow(null, '')
+  videoId: Joi.string().optional().allow(null, ''),
+  questionId: Joi.string().optional().allow(null, ''),
+  type: Joi.string().optional().allow(null, '').valid('post', 'question', 'answer').default('post'),
 });
 
 const postWithImageSchema: ObjectSchema = Joi.object().keys({
