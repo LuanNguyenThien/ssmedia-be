@@ -493,7 +493,30 @@ export class GroupController {
     const isRejected = group.members.some((m) => m.userId.toString() === userId && m.status === 'rejected');
     if (alreadyInGroup) {
       if (isRejected) {
-        throw new BadRequestError('You are not allowed to join this group');
+        // throw new BadRequestError('You are not allowed to join this group');
+        // const user = await userService.getUserById(userId);
+        // if (!user) {
+        //   // Thêm kiểm tra nếu không tìm thấy user
+        //   throw new BadRequestError('User not found');
+        // }
+
+        // const member: IGroupMember = {
+        //   userId: new ObjectId(userId),
+        //   username: user.username,
+        //   avatarColor: user.avatarColor || '#ffffff',
+        //   profilePicture: user.profilePicture || '',
+        //   role: 'member',
+        //   status: 'pending_admin',
+        //   joinedAt: new Date(),
+        //   joinedBy: 'self'
+        // };
+
+        await groupService.joinGroupAgain(groupId, userId);
+
+        res.status(HTTP_STATUS.OK).json({
+          message: 'Request to join group sent successfully'
+        });
+        return;
       }
       throw new BadRequestError('You are already a member of this group');
     }
@@ -656,5 +679,17 @@ export class GroupController {
       console.error('Error accepting post:', error);
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Error accepting post' });
     }
+  }
+
+
+  public async getRandomGroups(req: Request, res: Response): Promise<void> {
+    const limit = parseInt(req.query.limit as string) || 10; // Default to 10 groups if no limit is provided
+    const groups = await groupService.getRandomGroups(limit);
+    const total = groups.length;
+    res.status(HTTP_STATUS.OK).json({
+      message: 'Random groups retrieved successfully',
+      groups,
+      total
+    });
   }
 }
