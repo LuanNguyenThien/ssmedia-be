@@ -70,6 +70,7 @@ class PostService {
         $project: {
           _id: 1,
           userId: 1,
+          type: 1,
           questionId: 1,
           username: 1,
           email: 1,

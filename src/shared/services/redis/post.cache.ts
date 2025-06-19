@@ -341,7 +341,7 @@ export class PostCache extends BaseCache {
       'videoVersion': `${videoVersion}`,
       'createdAt': `${createdAt}`,
       'type': `${type}`,
-      'questionId': `${questionId}`,
+      'questionId': `${questionId || ''}`,
       'groupId': `${groupId || ''}`,
       'status': `${status}`,
     };
