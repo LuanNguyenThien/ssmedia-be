@@ -10,6 +10,12 @@
     joinedBy: 'self' | 'invited';
     status: 'pending_user' | 'pending_admin' | 'active' | 'rejected' | 'deleted';
     invitedBy?: mongoose.Types.ObjectId;
+    invitedInfo?: {
+      username?: string;
+      avatarColor?: string;
+      profilePicture?: string;
+      email?: string;
+    };
   }
   export interface IGroupCreate {
     name: string;
@@ -36,5 +42,6 @@
       category?: string[];
       createdAt: Date;
       updatedAt: Date;
+      invitedBy?: mongoose.Types.ObjectId;
     }
     

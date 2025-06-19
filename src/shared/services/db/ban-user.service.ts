@@ -54,17 +54,24 @@ class UserBanService {
     return updatedAuth;
   }
 
-  public async getBannedUsers(userId: string, skip: number, limit: number): Promise<IUserDocument[]> {
+  public async getBannedUsers(userId: string, skip: number, limit: number): Promise<{ results: IUserDocument[]; total: number }> {
     try {
       const bannedAuths = await AuthModel.find({ isBanned: true });
       const authIds = bannedAuths.map((auth) => auth._id);
+      const total = await UserModel.countDocuments({ authId: { $in: authIds } });
 
-      const bannedUsers = await UserModel.find({ authId: { $in: authIds } }).populate('authId'); // Lấy thêm thông tin từ bảng Auth
+      const bannedUsers = await UserModel.find({ authId: { $in: authIds } })
+        .populate('authId')
+        .skip(skip)
+        .limit(limit);; // Lấy thêm thông tin từ bảng Auth
 
-      return bannedUsers;
+      return {results: bannedUsers,total};
     } catch (error) {
       console.error('Error fetching banned users:', error);
-      return [];
+      return {
+        results: [],
+        total: 0
+      };
     }
   }
 

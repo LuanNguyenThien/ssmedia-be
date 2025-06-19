@@ -15,6 +15,7 @@ class PostRoutes {
 
   public routes(): Router {
     this.router.get('/post/:postId', authMiddleware.checkAuthentication, Get.prototype.postById);
+    this.router.get('/post/user/:userId/:page', authMiddleware.checkAuthentication, Get.prototype.postByUserIdPaginated);
     this.router.get('/post/all/:page', authMiddleware.checkAuthentication, Get.prototype.posts);
     this.router.get('/question/all/:page', authMiddleware.checkAuthentication, Get.prototype.questions);
     this.router.get('/post/images/:page', authMiddleware.checkAuthentication, Get.prototype.postsWithImages);
@@ -23,7 +24,7 @@ class PostRoutes {
     // this.router.get('/search/:query', authMiddleware.checkAuthentication, Search.prototype.searchPosts);
 
     this.router.post('/post', authMiddleware.checkAuthentication, Create.prototype.post);
-    this.router.post('/post/:groupId', authMiddleware.checkAuthentication, Create.prototype.grouppost);
+    this.router.post('/post/group/:groupId', authMiddleware.checkAuthentication, Create.prototype.grouppost);
     this.router.post('/post/image/post', authMiddleware.checkAuthentication, Create.prototype.postWithImage);
     this.router.post('/post/video/post', authMiddleware.checkAuthentication, Create.prototype.postWithVideo);
 

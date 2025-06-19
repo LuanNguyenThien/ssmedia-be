@@ -28,13 +28,15 @@ class GroupRoutes {
     this.router.post('/group/create', authMiddleware.checkAuthentication, group.create);
     this.router.get('/group/user-group/:userId', authMiddleware.checkAuthentication, group.getUserGroups);
     this.router.get('/group/:groupId/posts/:page', authMiddleware.checkAuthentication, group.getGroupPosts);
+    this.router.get('/group/allgroups', authMiddleware.checkAuthentication, group.getRandomGroups);
+    this.router.get('/group/:groupId/postspending/:page', authMiddleware.checkAuthentication, group.getGroupPostsPending);
     this.router.get('/group/:groupId', authMiddleware.checkAuthentication, group.getGroup);
     this.router.put('/group/:groupId', authMiddleware.checkAuthentication, group.updateGroupInfo);
     this.router.put('/group/add-members/:groupId', authMiddleware.checkAuthentication, group.addMembers);
     this.router.put('/group/remove-members/:groupId', authMiddleware.checkAuthentication, group.removeMembers);
     this.router.delete('/group/:groupId', authMiddleware.checkAuthentication, group.deleteGroup);
-
-
+    this.router.put('/group/post/:postId/accept', authMiddleware.checkAuthentication, group.acceptPost);
+    this.router.put('/group/post/:postId/decline', authMiddleware.checkAuthentication, group.declinedPost);
     //Post routes
     return this.router;
   }

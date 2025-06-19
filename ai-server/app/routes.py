@@ -27,7 +27,7 @@ async def analyze_post(request: AnalyzeRequest):
             audio_urls = mediaItems.get('audios', [])
 
         gifUrl = value.get('gifUrl', None)
-        if gifUrl is not None:
+        if gifUrl is not None and gifUrl != '':
             image_urls.append(gifUrl)
 
         if value['imgId'] != '' and value['imgVersion'] != '':

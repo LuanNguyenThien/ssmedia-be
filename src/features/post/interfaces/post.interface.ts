@@ -51,7 +51,8 @@ export interface IPostDocument extends Document {
   hiddenAt?: Date;
   type?: string; // 'post', 'question', 'answer',
   questionId?: string | mongoose.Types.ObjectId; // For answers
-  answersCount?: number; // For questions
+  answersCount?: number; // For questions,
+  isGroupPost?: boolean; // Indicates if the post is from a group
   groupId?: string | mongoose.Types.ObjectId;
   status ?: string; // 'active', 'deleted', 'archived'
 }

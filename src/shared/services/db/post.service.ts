@@ -12,6 +12,9 @@ const userbehaviorCache = cache.userBehaviorCache;
 
 class PostService {
   public async addPostToDB(userId: string, createdPost: IPostDocument): Promise<void> {
+    if (createdPost.groupId !== null && createdPost.groupId !== undefined) {
+      createdPost.isGroupPost = true;
+    }
     const post: Promise<IPostDocument> = PostModel.create(createdPost);
     if (createdPost.type !== 'answer') {
       const user: UpdateQuery<IUserDocument> = UserModel.updateOne({ _id: userId }, { $inc: { postsCount: 1 } });
@@ -67,6 +70,7 @@ class PostService {
         $project: {
           _id: 1,
           userId: 1,
+          type: 1,
           questionId: 1,
           username: 1,
           email: 1,
@@ -163,6 +167,7 @@ class PostService {
     }
 
     postQuery.isHidden = { $ne: true };
+    postQuery.isGroupPost = { $ne: true }; // Chỉ lấy các bài viết không thuộc nhóm
     postQuery.type = { $ne: 'answer' }; // Loại trừ các bài viết là câu trả lời
 
     // Xử lý lọc theo ngày
@@ -200,6 +205,15 @@ class PostService {
   public async postsCountAdmin(): Promise<number> {
     const count: number = await PostModel.find().countDocuments();
     return count;
+  }
+
+  public async deleteAnswer(answerId: string, questionId: string): Promise<void> {
+    const deleteAnswer: Query<IQueryComplete & IQueryDeleted, IPostDocument> = PostModel.deleteOne({ _id: answerId });
+    const decrementAnswerCount: UpdateQuery<IPostDocument> = PostModel.updateOne(
+      { _id: questionId },
+      { $inc: { answersCount: -1 } }
+    );
+    await Promise.all([deleteAnswer, decrementAnswerCount]);
   }
 
   public async deletePost(postId: string, userId: string): Promise<void> {
@@ -301,7 +315,8 @@ class PostService {
           filter: {
             privacy: { $ne: 'Private' },
             isHidden: { $ne: true },
-            type: { $ne: 'answer' } // Loại trừ các bài viết là câu trả lời
+            type: { $ne: 'answer' }, // Loại trừ các bài viết là câu trả lời
+            isGroupPost: { $ne: true } // Chỉ lấy các bài viết không thuộc nhóm
           }
         }
       } as any,
@@ -355,17 +370,34 @@ class PostService {
     );
     return post;
   }
+  public async acceptPost(postId: string): Promise<IPostDocument | null> {
+    const post = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        status: 'accepted'
+      },
+      { new: true }
+    );
+    return post;
+  }
+
+  public async declinePost(postId: string): Promise<IPostDocument | null> {
+    const post = await PostModel.findByIdAndUpdate(
+      postId,
+      {
+        status: 'declined'
+      },
+      { new: true }
+    );
+    return post;
+  }
 
   public async getHiddenPosts(skip = 0, limit = 5): Promise<{ posts: IPostDocument[]; total: number }> {
     const [posts, total] = await Promise.all([
-      PostModel.find({ isHidden: true })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      PostModel.find({ isHidden: true }).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
       PostModel.countDocuments({ isHidden: true })
     ]);
-  
+
     return { posts, total };
   }
 
@@ -377,13 +409,49 @@ class PostService {
     }
   }
 
-  public async getPostsByGroupOnly(
+  public async getPostsByGroupOnly(groupId: string, page: number, limit: number): Promise<{ posts: IPostDocument[]; totalPosts: number }> {
+    const skip = (page - 1) * limit;
+    const query = { groupId };
+
+    const posts = await PostModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+
+    const totalPosts = await PostModel.countDocuments(query);
+
+    return { posts, totalPosts };
+  }
+
+  public async getPostsAcceptByGroup(
     groupId: string,
     page: number,
     limit: number
   ): Promise<{ posts: IPostDocument[]; totalPosts: number }> {
     const skip = (page - 1) * limit;
-    const query = { groupId };
+
+    const query = {
+      groupId,
+      status: 'accepted',
+      privacy: 'Public'
+      // Chỉ lấy những post có status là "accept"
+    };
+
+    const posts = await PostModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+
+    const totalPosts = await PostModel.countDocuments(query);
+
+    return { posts, totalPosts };
+  }
+
+  public async getPostsPendingByGroup(
+    groupId: string,
+    page: number,
+    limit: number
+  ): Promise<{ posts: IPostDocument[]; totalPosts: number }> {
+    const skip = (page - 1) * limit;
+
+    const query = {
+      groupId,
+      status: 'pending' // Chỉ lấy những post có status là "accept"
+    };
 
     const posts = await PostModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
 

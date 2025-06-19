@@ -38,7 +38,7 @@ export class Update {
 
   @joiValidation(postSchema)
   public async posts(req: Request, res: Response): Promise<void> {
-    let { type, htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
+    let { questionId, type, htmlPost, post, bgColor, feelings, privacy, gifUrl, imgVersion, imgId, profilePicture } = req.body;
     const { postId } = req.params;
     if(htmlPost === undefined) {
       htmlPost = '';
@@ -58,7 +58,8 @@ export class Update {
       imgVersion,
       videoId: '',
       videoVersion: '',
-      type: type || htmlPost ? 'post' : 'question',
+      type: type || (htmlPost ? 'post' : 'question'),
+      questionId: questionId ? questionId : undefined,
     } as IPostDocument;
 
     const postUpdated: IPostDocument = await postCache.updatePostInCache(postId, updatedPost);

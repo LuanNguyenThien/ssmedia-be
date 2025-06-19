@@ -109,7 +109,7 @@ class PostWorker {
 
     try {
       const notificationModel: INotificationDocument = new NotificationModel();
-      if(value.type === 'answer') {
+      if(value.type === 'answer' && value.questionCreatedAt) {
         const formattedDateAnswer = Helpers.formattedDate(value.createdAt.toString());
         const formattedDateQuestion = Helpers.formattedDate(value.questionCreatedAt.toString());
         const message = `Your question at ${formattedDateQuestion} has been answered by ${value.username}.`;

@@ -315,7 +315,9 @@ export class PostCache extends BaseCache {
       reactions,
       createdAt,
       type,
-      groupId
+      questionId,
+      groupId,
+      status,
     } = createdPost;
 
     const dataToSave = {
@@ -339,7 +341,9 @@ export class PostCache extends BaseCache {
       'videoVersion': `${videoVersion}`,
       'createdAt': `${createdAt}`,
       'type': `${type}`,
+      'questionId': `${questionId || ''}`,
       'groupId': `${groupId || ''}`,
+      'status': `${status}`,
     };
 
     try {
@@ -628,6 +632,26 @@ export class PostCache extends BaseCache {
     }
   }
 
+  public async deleteAnswerFromCache(answerId: string, questionId: string): Promise<void> {
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+      }
+      const answerCount: string[] = await this.client.HMGET(`posts:${questionId}`, 'answersCount');
+      const multi: ReturnType<typeof this.client.multi> = this.client.multi();
+      multi.ZREM('post', `${answerId}`);
+      multi.DEL(`posts:${answerId}`);
+      multi.DEL(`comments:${answerId}`);
+      multi.DEL(`reactions:${answerId}`);
+      // Cập nhật số lượng câu trả lời trong bài viết câu hỏi
+      multi.HSET(`posts:${questionId}`, 'answersCount', parseInt(answerCount[0], 10) - 1);
+      await multi.exec();
+    } catch (error) {
+      log.error(error);
+      throw new ServerError('Server error. Try again.');
+    }
+  }
+
   public async deletePostFromCache(key: string, currentUserId: string): Promise<void> {
     try {
       if (!this.client.isOpen) {
@@ -666,6 +690,8 @@ export class PostCache extends BaseCache {
       hiddenReason,
       hiddenAt,
       type,
+      questionId,
+      status
     } = updatedPost;
     const dataToSave = {
       'htmlPost': `${htmlPost}`,
@@ -683,8 +709,10 @@ export class PostCache extends BaseCache {
       'hiddenReason': `${hiddenReason}`,
       'hiddenAt': hiddenAt ? new Date(hiddenAt).toISOString() : '',
       'type': `${type}`,
+      'questionId': `${questionId}`,
+      'status': `${status}`
     };
-
+    console.log('dataToSave', dataToSave);
     try {
       if (!this.client.isOpen) {
         await this.client.connect();
@@ -692,6 +720,7 @@ export class PostCache extends BaseCache {
       for (const [itemKey, itemValue] of Object.entries(dataToSave)) {
         console.log(itemKey, itemValue);
         if(itemValue != 'undefined') {
+          console.log(`posts:${key}`, `${itemKey}`, `${itemValue}`);
         await this.client.HSET(`posts:${key}`, `${itemKey}`, `${itemValue}`);}
       }
       const multi: ReturnType<typeof this.client.multi> = this.client.multi();
