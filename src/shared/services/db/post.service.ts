@@ -12,6 +12,9 @@ const userbehaviorCache = cache.userBehaviorCache;
 
 class PostService {
   public async addPostToDB(userId: string, createdPost: IPostDocument): Promise<void> {
+    if (createdPost.groupId !== null && createdPost.groupId !== undefined) {
+      createdPost.isGroupPost = true;
+    }
     const post: Promise<IPostDocument> = PostModel.create(createdPost);
     if (createdPost.type !== 'answer') {
       const user: UpdateQuery<IUserDocument> = UserModel.updateOne({ _id: userId }, { $inc: { postsCount: 1 } });
@@ -163,6 +166,7 @@ class PostService {
     }
 
     postQuery.isHidden = { $ne: true };
+    postQuery.isGroupPost = { $ne: true }; // Chỉ lấy các bài viết không thuộc nhóm
     postQuery.type = { $ne: 'answer' }; // Loại trừ các bài viết là câu trả lời
 
     // Xử lý lọc theo ngày
@@ -200,6 +204,15 @@ class PostService {
   public async postsCountAdmin(): Promise<number> {
     const count: number = await PostModel.find().countDocuments();
     return count;
+  }
+
+  public async deleteAnswer(answerId: string, questionId: string): Promise<void> {
+    const deleteAnswer: Query<IQueryComplete & IQueryDeleted, IPostDocument> = PostModel.deleteOne({ _id: answerId });
+    const decrementAnswerCount: UpdateQuery<IPostDocument> = PostModel.updateOne(
+      { _id: questionId },
+      { $inc: { answersCount: -1 } }
+    );
+    await Promise.all([deleteAnswer, decrementAnswerCount]);
   }
 
   public async deletePost(postId: string, userId: string): Promise<void> {
@@ -301,7 +314,8 @@ class PostService {
           filter: {
             privacy: { $ne: 'Private' },
             isHidden: { $ne: true },
-            type: { $ne: 'answer' } // Loại trừ các bài viết là câu trả lời
+            type: { $ne: 'answer' }, // Loại trừ các bài viết là câu trả lời
+            isGroupPost: { $ne: true } // Chỉ lấy các bài viết không thuộc nhóm
           }
         }
       } as any,

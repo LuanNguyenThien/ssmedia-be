@@ -53,7 +53,7 @@ class ReactionService {
           // Save user interests from the post analysis
           await userBehaviorCache.saveUserInterests(userFrom as string, postId, postDoc);
         }
-        if(type === 'downvote' && postDoc) {
+        if(type === 'downvote' && previousReaction === 'upvote' && postDoc) {
           await postCache.clearPersonalizedPostsCache(userFrom as string);
           await userBehaviorCache.removeUserInterests(userFrom as string, postId);
         }
