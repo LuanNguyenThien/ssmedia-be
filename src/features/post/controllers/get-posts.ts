@@ -9,18 +9,19 @@ import mongoose from 'mongoose';
 
 // const postCache: PostCache = new PostCache();
 const postCache = cache.postCache;
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
 const REDIS_BATCH_SIZE = 50;
 
 export class Get {
   public async postById(req: Request, res: Response): Promise<Response> {
     const { postId } = req.params;
-    let post: IPostDocument | null = await postCache.getPostFromCache(postId);
+    // let post: IPostDocument | null = await postCache.getPostFromCache(postId);
+    // if (!post) {
+      
+    // }
+    let post: IPostDocument | null = await postService.getPostById(postId);
     if (!post) {
-      post = await postService.getPostById(postId);
-      if (!post) {
-        return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Post not found' });
-      }
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Post not found' });
     }
     return res.status(HTTP_STATUS.OK).json({ message: 'Post found', post });
   }
